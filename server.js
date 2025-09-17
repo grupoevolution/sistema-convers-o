@@ -1,590 +1,4 @@
-res.send(
-        '<!DOCTYPE html>' +
-        '<html lang="pt-BR">' +
-        '<head>' +
-            '<meta charset="UTF-8">' +
-            '<meta name="viewport" content="width=device-width, initial-scale=1.0">' +
-            '<title>Kirvano - Painel de Controle</title>' +
-            '<style>' +
-                '* { margin: 0; padding: 0; box-sizing: border-box; }' +
-                
-                'body {' +
-                    'font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;' +
-                    'background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);' +
-                    'min-height: 100vh;' +
-                    'color: #333;' +
-                '}' +
-                
-                '.container {' +
-                    'max-width: 1200px;' +
-                    'margin: 0 auto;' +
-                    'padding: 20px;' +
-                '}' +
-                
-                '.header {' +
-                    'background: white;' +
-                    'border-radius: 12px;' +
-                    'padding: 24px;' +
-                    'margin-bottom: 24px;' +
-                    'box-shadow: 0 4px 20px rgba(0,0,0,0.1);' +
-                '}' +
-                
-                'h1 {' +
-                    'color: #333;' +
-                    'margin-bottom: 8px;' +
-                    'font-size: 28px;' +
-                '}' +
-                
-                '.subtitle {' +
-                    'color: #666;' +
-                    'margin-bottom: 20px;' +
-                '}' +
-                
-                '.stats {' +
-                    'display: grid;' +
-                    'grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));' +
-                    'gap: 16px;' +
-                    'margin-bottom: 20px;' +
-                '}' +
-                
-                '.stat-card {' +
-                    'background: #f8f9fa;' +
-                    'padding: 16px;' +
-                    'border-radius: 8px;' +
-                    'border-left: 4px solid #667eea;' +
-                '}' +
-                
-                '.stat-value {' +
-                    'font-size: 24px;' +
-                    'font-weight: bold;' +
-                    'color: #333;' +
-                '}' +
-                
-                '.stat-label {' +
-                    'color: #666;' +
-                    'font-size: 14px;' +
-                    'margin-top: 4px;' +
-                '}' +
-                
-                '.content {' +
-                    'background: white;' +
-                    'border-radius: 12px;' +
-                    'padding: 24px;' +
-                    'box-shadow: 0 4px 20px rgba(0,0,0,0.1);' +
-                '}' +
-                
-                '.tabs {' +
-                    'display: flex;' +
-                    'border-bottom: 2px solid #f0f0f0;' +
-                    'margin-bottom: 24px;' +
-                '}' +
-                
-                '.tab {' +
-                    'padding: 12px 20px;' +
-                    'background: none;' +
-                    'border: none;' +
-                    'cursor: pointer;' +
-                    'color: #666;' +
-                    'border-bottom: 2px solid transparent;' +
-                    'margin-bottom: -2px;' +
-                '}' +
-                
-                '.tab.active {' +
-                    'color: #667eea;' +
-                    'border-bottom-color: #667eea;' +
-                '}' +
-                
-                '.tab-content {' +
-                    'display: none;' +
-                '}' +
-                
-                '.tab-content.active {' +
-                    'display: block;' +
-                '}' +
-                
-                'table {' +
-                    'width: 100%;' +
-                    'border-collapse: collapse;' +
-                    'margin-top: 16px;' +
-                '}' +
-                
-                'th, td {' +
-                    'padding: 12px;' +
-                    'text-align: left;' +
-                    'border-bottom: 1px solid #eee;' +
-                '}' +
-                
-                'th {' +
-                    'background: #f8f9fa;' +
-                    'font-weight: 600;' +
-                    'color: #555;' +
-                '}' +
-                
-                '.badge {' +
-                    'display: inline-block;' +
-                    'padding: 4px 8px;' +
-                    'border-radius: 4px;' +
-                    'font-size: 12px;' +
-                    'font-weight: 500;' +
-                '}' +
-                
-                '.badge-success { background: #d4edda; color: #155724; }' +
-                '.badge-warning { background: #fff3cd; color: #856404; }' +
-                '.badge-info { background: #d1ecf1; color: #0c5460; }' +
-                '.badge-danger { background: #f8d7da; color: #721c24; }' +
-                
-                '.btn {' +
-                    'background: #667eea;' +
-                    'color: white;' +
-                    'border: none;' +
-                    'padding: 8px 16px;' +
-                    'border-radius: 6px;' +
-                    'cursor: pointer;' +
-                    'margin: 0 4px;' +
-                    'font-size: 14px;' +
-                '}' +
-                
-                '.btn:hover {' +
-                    'background: #5a67d8;' +
-                '}' +
-                
-                '.btn-small {' +
-                    'padding: 4px 8px;' +
-                    'font-size: 12px;' +
-                '}' +
-                
-                '.form-group {' +
-                    'margin-bottom: 16px;' +
-                '}' +
-                
-                'label {' +
-                    'display: block;' +
-                    'margin-bottom: 4px;' +
-                    'font-weight: 500;' +
-                '}' +
-                
-                'input, textarea, select {' +
-                    'width: 100%;' +
-                    'padding: 8px 12px;' +
-                    'border: 1px solid #ddd;' +
-                    'border-radius: 4px;' +
-                    'font-size: 14px;' +
-                '}' +
-                
-                '.step-item {' +
-                    'background: #f8f9fa;' +
-                    'border: 1px solid #e9ecef;' +
-                    'border-radius: 6px;' +
-                    'padding: 16px;' +
-                    'margin-bottom: 12px;' +
-                '}' +
-                
-                '.step-header {' +
-                    'display: flex;' +
-                    'justify-content: space-between;' +
-                    'align-items: center;' +
-                    'margin-bottom: 12px;' +
-                '}' +
-                
-                '.log-item {' +
-                    'background: #f8f9fa;' +
-                    'padding: 12px;' +
-                    'border-left: 4px solid #667eea;' +
-                    'margin-bottom: 8px;' +
-                    'font-family: monospace;' +
-                    'font-size: 13px;' +
-                '}' +
-                
-                '.log-error { border-left-color: #dc3545; }' +
-                '.log-success { border-left-color: #28a745; }' +
-                
-                '.empty-state {' +
-                    'text-align: center;' +
-                    'padding: 40px 20px;' +
-                    'color: #666;' +
-                '}' +
-                
-                '.modal {' +
-                    'display: none;' +
-                    'position: fixed;' +
-                    'top: 0;' +
-                    'left: 0;' +
-                    'width: 100%;' +
-                    'height: 100%;' +
-                    'background: rgba(0,0,0,0.5);' +
-                    'z-index: 1000;' +
-                '}' +
-                
-                '.modal-content {' +
-                    'background: white;' +
-                    'margin: 50px auto;' +
-                    'padding: 24px;' +
-                    'border-radius: 8px;' +
-                    'width: 90%;' +
-                    'max-width: 600px;' +
-                    'max-height: 80vh;' +
-                    'overflow-y: auto;' +
-                '}' +
-                
-                '.close {' +
-                    'float: right;' +
-                    'font-size: 24px;' +
-                    'cursor: pointer;' +
-                    'color: #999;' +
-                '}' +
-                
-                '.close:hover {' +
-                    'color: #333;' +
-                '}' +
-            '</style>' +
-        '</head>' +
-        '<body>' +
-            '<div class="container">' +
-                '<div class="header">' +
-                    '<h1>Kirvano - Painel de Controle</h1>' +
-                    '<p class="subtitle">Sistema de funis e fallback para Evolution API</p>' +
-                    
-                    '<div class="stats" id="stats">' +
-                        '<div class="stat-card">' +
-                            '<div class="stat-value" id="activeConversations">-</div>' +
-                            '<div class="stat-label">Conversas Ativas</div>' +
-                        '</div>' +
-                        '<div class="stat-card">' +
-                            '<div class="stat-value" id="pendingAcks">-</div>' +
-                            '<div class="stat-label">ACKs Pendentes</div>' +
-                        '</div>' +
-                        '<div class="stat-card">' +
-                            '<div class="stat-value" id="pendingPix">-</div>' +
-                            '<div class="stat-label">PIX Pendentes</div>' +
-                        '</div>' +
-                        '<div class="stat-card">' +
-                            '<div class="stat-value" id="totalFunnels">-</div>' +
-                            '<div class="stat-label">Funis Configurados</div>' +
-                        '</div>' +
-                    '</div>' +
-                    
-                    '<button class="btn" onclick="refreshData()">Atualizar</button>' +
-                '</div>' +
-                
-                '<div class="content">' +
-                    '<div class="tabs">' +
-                        '<button class="tab active" onclick="switchTab(\'conversations\')">Conversas</button>' +
-                        '<button class="tab" onclick="switchTab(\'funnels\')">Funis</button>' +
-                        '<button class="tab" onclick="switchTab(\'logs\')">Logs</button>' +
-                        '<button class="tab" onclick="switchTab(\'debug\')">Debug</button>' +
-                    '</div>' +
-                    
-                    '<div id="conversations" class="tab-content active">' +
-                        '<div id="conversationsContent">Carregando...</div>' +
-                    '</div>' +
-                    
-                    '<div id="funnels" class="tab-content">' +
-                        '<div style="margin-bottom: 16px;">' +
-                            '<button class="btn" onclick="showFunnelModal()">Novo Funil</button>' +
-                        '</div>' +
-                        '<div id="funnelsContent">Carregando...</div>' +
-                    '</div>' +
-                    
-                    '<div id="logs" class="tab-content">' +
-                        '<div id="logsContent">Carregando...</div>' +
-                    '</div>' +
-                    
-                    '<div id="debug" class="tab-content">' +
-                        '<h3>Envio Manual</h3>' +
-                        '<div class="form-group">' +
-                            '<label>Telefone (remoteJid)</label>' +
-                            '<input type="text" id="debugPhone" placeholder="5511999999999@s.whatsapp.net">' +
-                        '</div>' +
-                        '<div class="form-group">' +
-                            '<label>Tipo</label>' +
-                            '<select id="debugType">' +
-                                '<option value="text">Texto</option>' +
-                                '<option value="image">Imagem</option>' +
-                                '<option value="video">Vídeo</option>' +
-                                '<option value="image+text">Imagem + Texto</option>' +
-                                '<option value="video+text">Vídeo + Texto</option>' +
-                            '</select>' +
-                        '</div>' +
-                        '<div class="form-group">' +
-                            '<label>Texto</label>' +
-                            '<textarea id="debugText" rows="3"></textarea>' +
-                        '</div>' +
-                        '<div class="form-group">' +
-                            '<label>URL da Mídia</label>' +
-                            '<input type="text" id="debugMediaUrl">' +
-                        '</div>' +
-                        '<button class="btn" onclick="sendDebugMessage()">Enviar</button>' +
-                    '</div>' +
-                '</div>' +
-            '</div>' +
-            
-            '<!-- Modal para edição de funil -->' +
-            '<div id="funnelModal" class="modal">' +
-                '<div class="modal-content">' +
-                    '<span class="close" onclick="closeFunnelModal()">&times;</span>' +
-                    '<h3 id="modalTitle">Editar Funil</h3>' +
-                    
-                    '<div class="form-group">' +
-                        '<label>ID do Funil</label>' +
-                        '<input type="text" id="funnelId">' +
-                    '</div>' +
-                    
-                    '<div class="form-group">' +
-                        '<label>Nome do Funil</label>' +
-                        '<input type="text" id="funnelName">' +
-                    '</div>' +
-                    
-                    '<h4>Passos</h4>' +
-                    '<div id="stepsContainer"></div>' +
-                    
-                    '<button class="btn" onclick="addStep()">Adicionar Passo</button>' +
-                    '<button class="btn" onclick="saveFunnel()">Salvar Funil</button>' +
-                '</div>' +
-            '</div>' +
-            
-            '<script>' +
-                'let currentData = {};' +
-                'let currentFunnel = null;' +
-                
-                'async function refreshData() {' +
-                    'try {' +
-                        'const statusResponse = await fetch("/status");' +
-                        'const funnelsResponse = await fetch("/funnels");' +
-                        
-                        'const statusData = await statusResponse.json();' +
-                        'const funnelsData = await funnelsResponse.json();' +
-                        
-                        'currentData = Object.assign({}, statusData, { funnels: funnelsData });' +
-                        
-                        'updateStats();' +
-                        'updateActiveTab();' +
-                    '} catch (error) {' +
-                        'console.error("Erro ao carregar dados:", error);' +
-                    '}' +
-                '}' +
-                
-                'function updateStats() {' +
-                    'document.getElementById("activeConversations").textContent = (currentData.stats && currentData.stats.active_conversations) || 0;' +
-                    'document.getElementById("pendingAcks").textContent = (currentData.stats && currentData.stats.pending_acks) || 0;' +
-                    'document.getElementById("pendingPix").textContent = (currentData.stats && currentData.stats.pending_pix) || 0;' +
-                    'document.getElementById("totalFunnels").textContent = (currentData.stats && currentData.stats.total_funnels) || 0;' +
-                '}' +
-                
-                'function switchTab(tabName) {' +
-                    'var tabs = document.querySelectorAll(".tab");' +
-                    'var contents = document.querySelectorAll(".tab-content");' +
-                    
-                    'for (var i = 0; i < tabs.length; i++) {' +
-                        'tabs[i].classList.remove("active");' +
-                    '}' +
-                    'for (var i = 0; i < contents.length; i++) {' +
-                        'contents[i].classList.remove("active");' +
-                    '}' +
-                    
-                    'event.target.classList.add("active");' +
-                    'document.getElementById(tabName).classList.add("active");' +
-                    
-                    'updateActiveTab();' +
-                '}' +
-                
-                'function updateActiveTab() {' +
-                    'var activeTab = document.querySelector(".tab.active").textContent.toLowerCase();' +
-                    
-                    'if (activeTab === "conversas") {' +
-                        'updateConversationsTab();' +
-                    '} else if (activeTab === "funis") {' +
-                        'updateFunnelsTab();' +
-                    '} else if (activeTab === "logs") {' +
-                        'updateLogsTab();' +
-                    '}' +
-                '}' +
-                
-                'function updateConversationsTab() {' +
-                    'var content = document.getElementById("conversationsContent");' +
-                    'var conversations = currentData.conversations || [];' +
-                    
-                    'if (conversations.length === 0) {' +
-                        'content.innerHTML = "<div class=\\"empty-state\\">Nenhuma conversa ativa</div>";' +
-                        'return;' +
-                    '}' +
-                    
-                    'var html = "<table><thead><tr><th>Telefone</th><th>Produto</th><th>Funil</th><th>Passo</th><th>Status</th><th>Instância</th><th>Ações</th></tr></thead><tbody>";' +
-                    
-                    'conversations.forEach(function(conv) {' +
-                        'var phone = conv.phone || conv.remoteJid.replace("@s.whatsapp.net", "");' +
-                        'var statusBadge = conv.waiting_for_response ? ' +
-                            '"<span class=\\"badge badge-warning\\">Aguardando</span>" : ' +
-                            '"<span class=\\"badge badge-success\\">Pronto</span>";' +
-                        
-                        'html += "<tr>";' +
-                        'html += "<td>" + phone + "</td>";' +
-                        'html += "<td><span class=\\"badge badge-info\\">" + conv.productType + "</span></td>";' +
-                        'html += "<td>" + conv.funnelId + "</td>";' +
-                        'html += "<td>" + conv.stepIndex + "</td>";' +
-                        'html += "<td>" + statusBadge + "</td>";' +
-                        'html += "<td>" + (conv.stickyInstance || "-") + "</td>";' +
-                        'html += "<td>";' +
-                        'html += "<button class=\\"btn btn-small\\" onclick=\\"advanceConversation(\'" + encodeURIComponent(conv.remoteJid) + "\')\\">;Avançar</button>";' +
-                        'html += "<button class=\\"btn btn-small\\" onclick=\\"resetConversation(\'" + encodeURIComponent(conv.remoteJid) + "\')\\">;Reset</button>";' +
-                        'html += "</td>";' +
-                        'html += "</tr>";' +
-                    '});' +
-                    
-                    'html += "</tbody></table>";' +
-                    'content.innerHTML = html;' +
-                '}' +
-                
-                'function updateFunnelsTab() {' +
-                    'var content = document.getElementById("funnelsContent");' +
-                    'var funnels = currentData.funnels || [];' +
-                    
-                    'if (funnels.length === 0) {' +
-                        'content.innerHTML = "<div class=\\"empty-state\\">Nenhum funil configurado</div>";' +
-                        'return;' +
-                    '}' +
-                    
-                    'var html = "";' +
-                    'funnels.forEach(function(funnel) {' +
-                        'html += "<div class=\\"step-item\\">";' +
-                        'html += "<div class=\\"step-header\\">";' +
-                        'html += "<h4>" + funnel.name + " (" + funnel.id + ")</h4>";' +
-                        'html += "<div>";' +
-                        'html += "<button class=\\"btn btn-small\\" onclick=\\"editFunnel(\'" + funnel.id + "\')\\">;Editar</button>";' +
-                        'html += "<button class=\\"btn btn-small\\" onclick=\\"deleteFunnel(\'" + funnel.id + "\')\\">;Excluir</button>";' +
-                        'html += "</div>";' +
-                        'html += "</div>";' +
-                        'html += "<p><strong>Passos:</strong> " + funnel.steps.length + "</p>";' +
-                        'html += "</div>";' +
-                    '});' +
-                    
-                    'content.innerHTML = html;' +
-                '}' +
-                
-                'function updateLogsTab() {' +
-                    'var content = document.getElementById("logsContent");' +
-                    'var logs = currentData.recent_logs || [];' +
-                    
-                    'if (logs.length === 0) {' +
-                        'content.innerHTML = "<div class=\\"empty-state\\">Nenhum log recente</div>";' +
-                        'return;' +
-                    '}' +
-                    
-                    'var html = "";' +
-                    'logs.forEach(function(log) {' +
-                        'var timestamp = new Date(log.timestamp).toLocaleTimeString();' +
-                        'var className = log.type.indexOf("ERROR") !== -1 ? "log-error" : ' +
-                                        'log.type.indexOf("SUCCESS") !== -1 ? "log-success" : "";' +
-                        
-                        'html += "<div class=\\"log-item " + className + "\\">";' +
-                        'html += "<strong>" + timestamp + "</strong> [" + log.type + "] " + log.message;' +
-                        'html += "</div>";' +
-                    '});' +
-                    
-                    'content.innerHTML = html;' +
-                '}' +
-                
-                'async function advanceConversation(remoteJid) {' +
-                    'try {' +
-                        'await fetch("/conversations/" + remoteJid + "/advance", { method: "POST" });' +
-                        'refreshData();' +
-                    '} catch (error) {' +
-                        'alert("Erro ao avançar conversa");' +
-                    '}' +
-                '}' +
-                
-                'async function resetConversation(remoteJid) {' +
-                    'if (!confirm("Tem certeza que deseja resetar esta conversa?")) return;' +
-                    
-                    'try {' +
-                        'await fetch("/conversations/" + remoteJid + "/reset", { method: "POST" });' +
-                        'refreshData();' +
-                    '} catch (error) {' +
-                        'alert("Erro ao resetar conversa");' +
-                    '}' +
-                '}' +
-                
-                'function showFunnelModal(funnelId) {' +
-                    'currentFunnel = funnelId ? currentData.funnels.find(function(f) { return f.id === funnelId; }) : null;' +
-                    
-                    'document.getElementById("modalTitle").textContent = funnelId ? "Editar Funil" : "Novo Funil";' +
-                    'document.getElementById("funnelId").value = currentFunnel ? currentFunnel.id : "";' +
-                    'document.getElementById("funnelName").value = currentFunnel ? currentFunnel.name : "";' +
-                    
-                    'renderSteps();' +
-                    'document.getElementById("funnelModal").style.display = "block";' +
-                '}' +
-                
-                'function closeFunnelModal() {' +
-                    'document.getElementById("funnelModal").style.display = "none";' +
-                '}' +
-                
-                'function editFunnel(funnelId) {' +
-                    'showFunnelModal(funnelId);' +
-                '}' +
-                
-                'async function deleteFunnel(funnelId) {' +
-                    'if (!confirm("Tem certeza que deseja excluir este funil?")) return;' +
-                    
-                    'try {' +
-                        'await fetch("/funnels/" + funnelId, { method: "DELETE" });' +
-                        'refreshData();' +
-                    '} catch (error) {' +
-                        'alert("Erro ao excluir funil");' +
-                    '}' +
-                '}' +
-                
-                'function renderSteps() {' +
-                    'var container = document.getElementById("stepsContainer");' +
-                    'var steps = currentFunnel ? currentFunnel.steps : [];' +
-                    
-                    'var html = "";' +
-                    'steps.forEach(function(step, index) {' +
-                        'html += "<div class=\\"step-item\\">";' +
-                        'html += "<div class=\\"step-header\\">";' +
-                        'html += "<h5>Passo " + index + "</h5>";' +
-                        'html += "<button class=\\"btn btn-small\\" onclick=\\"removeStep(" + index + ")\\">;Remover</button>";' +
-                        'html += "</div>";' +
-                        'html += "<p>Tipo: " + step.type + "</p>";' +
-                        'html += "<p>Texto: " + (step.text || "").substring(0, 50) + "...</p>";' +
-                        'html += "</div>";' +
-                    '});' +
-                    
-                    'container.innerHTML = html;' +
-                '}' +
-                
-                'function addStep() {' +
-                    'if (!currentFunnel) {' +
-                        'currentFunnel = { id: "", name: "", steps: [] };' +
-                    '}' +
-                    
-                    'currentFunnel.steps.push({' +
-                        'id: "step_" + (currentFunnel.steps.length + 1),' +
-                        'type: "text",' +
-                        'text: "",' +
-                        'waitForReply: false' +
-                    '});' +
-                    
-                    'renderSteps();' +
-                '}' +
-                
-                'function removeStep(index) {' +
-                    'if (!currentFunnel) return;' +
-                    'currentFunnel.steps.splice(index, 1);' +
-                    'renderSteps();' +
-                '}' +
-                
-                'async function saveFunnel() {' +
-                    'var id = document.getElementById("funnelId").value;' +
-                    'var name = document.getElementById("funnelName").value;' +
-                    
-                    'if (!id || !name) {' +
-                        'alert("ID e Nome são obrigatórios");' +
-                        'return;' +
-                    '}' +
-                    
-                    'var funnel = {' +
-                        'id: id,' +
-                        'name: name,' +const express = require('express');
+const express = require('express');
 const axios = require('axios');
 const { v4: uuidv4 } = require('uuid');
 const app = express();
@@ -608,13 +22,13 @@ const PRODUCT_MAPPING = {
 const INSTANCES = ['GABY01', 'GABY02', 'GABY03', 'GABY04', 'GABY05', 'GABY06', 'GABY07', 'GABY08', 'GABY09'];
 
 // ============ ARMAZENAMENTO EM MEMÓRIA ============
-let conversations = new Map();       // remoteJid -> conversationState
-let pendingAcks = new Map();        // clientMessageId -> ackData
-let idempotencyCache = new Map();   // cache de idempotência
-let stickyInstances = new Map();    // remoteJid -> instanceName
-let pixTimeouts = new Map();        // remoteJid -> timeoutData
-let logs = [];                      // histórico de eventos
-let funis = new Map();             // funnelId -> funnel
+let conversations = new Map();
+let pendingAcks = new Map();
+let idempotencyCache = new Map();
+let stickyInstances = new Map();
+let pixTimeouts = new Map();
+let logs = [];
+let funis = new Map();
 
 // ============ FUNIS PADRÃO ============
 const defaultFunnels = {
@@ -778,7 +192,6 @@ function extractMessageText(message) {
 function checkIdempotency(key, ttl = 5 * 60 * 1000) {
     const now = Date.now();
     
-    // Limpar cache antigo
     for (const [k, timestamp] of idempotencyCache.entries()) {
         if (now - timestamp > ttl) {
             idempotencyCache.delete(k);
@@ -786,11 +199,11 @@ function checkIdempotency(key, ttl = 5 * 60 * 1000) {
     }
     
     if (idempotencyCache.has(key)) {
-        return true; // duplicado
+        return true;
     }
     
     idempotencyCache.set(key, now);
-    return false; // novo
+    return false;
 }
 
 function addLog(type, message, data = null) {
@@ -803,18 +216,17 @@ function addLog(type, message, data = null) {
     
     logs.unshift(log);
     
-    // Manter apenas últimos 1000 logs
     if (logs.length > 1000) {
         logs = logs.slice(0, 1000);
     }
     
-    console.log(`[${log.timestamp.toISOString()}] ${type}: ${message}`);
+    console.log('[' + log.timestamp.toISOString() + '] ' + type + ': ' + message);
 }
 
 // ============ EVOLUTION API ADAPTER ============
 
 async function sendToEvolution(instanceName, endpoint, payload) {
-    const url = `${EVOLUTION_BASE_URL}${endpoint}/${instanceName}`;
+    const url = EVOLUTION_BASE_URL + endpoint + '/' + instanceName;
     
     try {
         const response = await axios.post(url, payload, {
@@ -836,8 +248,7 @@ async function sendToEvolution(instanceName, endpoint, payload) {
 }
 
 async function sendText(remoteJid, text, clientMessageId) {
-    // Adicionar marcador invisível no texto
-    const textWithId = text + `\u200B[#cmid:${clientMessageId}]`;
+    const textWithId = text + '\u200B[#cmid:' + clientMessageId + ']';
     
     const payload = {
         number: remoteJid.replace('@s.whatsapp.net', ''),
@@ -848,7 +259,7 @@ async function sendText(remoteJid, text, clientMessageId) {
 }
 
 async function sendImage(remoteJid, imageUrl, caption, clientMessageId) {
-    const captionWithId = caption ? caption + `\u200B[#cmid:${clientMessageId}]` : `\u200B[#cmid:${clientMessageId}]`;
+    const captionWithId = caption ? caption + '\u200B[#cmid:' + clientMessageId + ']' : '\u200B[#cmid:' + clientMessageId + ']';
     
     const payload = {
         number: remoteJid.replace('@s.whatsapp.net', ''),
@@ -863,7 +274,7 @@ async function sendImage(remoteJid, imageUrl, caption, clientMessageId) {
 }
 
 async function sendVideo(remoteJid, videoUrl, caption, clientMessageId) {
-    const captionWithId = caption ? caption + `\u200B[#cmid:${clientMessageId}]` : `\u200B[#cmid:${clientMessageId}]`;
+    const captionWithId = caption ? caption + '\u200B[#cmid:' + clientMessageId + ']' : '\u200B[#cmid:' + clientMessageId + ']';
     
     const payload = {
         number: remoteJid.replace('@s.whatsapp.net', ''),
@@ -882,12 +293,10 @@ async function sendVideo(remoteJid, videoUrl, caption, clientMessageId) {
 async function sendWithFallback(remoteJid, type, text, mediaUrl) {
     const clientMessageId = uuidv4();
     
-    // Verificar se existe instância sticky
     const stickyInstance = stickyInstances.get(remoteJid);
     let instancesToTry = [...INSTANCES];
     
     if (stickyInstance) {
-        // Colocar sticky na frente da lista
         instancesToTry = [stickyInstance, ...INSTANCES.filter(i => i !== stickyInstance)];
     }
     
@@ -895,7 +304,7 @@ async function sendWithFallback(remoteJid, type, text, mediaUrl) {
     
     for (const instanceName of instancesToTry) {
         try {
-            addLog('SEND_ATTEMPT', `Tentando ${instanceName} para ${remoteJid}`, { type, clientMessageId });
+            addLog('SEND_ATTEMPT', 'Tentando ' + instanceName + ' para ' + remoteJid, { type, clientMessageId });
             
             let result;
             
@@ -904,7 +313,7 @@ async function sendWithFallback(remoteJid, type, text, mediaUrl) {
             } else if (type === 'image') {
                 result = await sendImage(remoteJid, mediaUrl, text, clientMessageId);
             } else if (type === 'video') {
-                result = await sendVideo(remoteJid, videoUrl, text, clientMessageId);
+                result = await sendVideo(remoteJid, mediaUrl, text, clientMessageId);
             } else if (type === 'image+text') {
                 result = await sendImage(remoteJid, mediaUrl, text, clientMessageId);
             } else if (type === 'video+text') {
@@ -912,24 +321,20 @@ async function sendWithFallback(remoteJid, type, text, mediaUrl) {
             }
             
             if (result && result.ok) {
-                // Sucesso! Salvar instância sticky e aguardar ACK
                 stickyInstances.set(remoteJid, instanceName);
-                
-                // Aguardar confirmação via webhook
                 return await waitForAck(clientMessageId, remoteJid, instanceName);
             } else {
                 lastError = result.error;
-                addLog('SEND_FAILED', `${instanceName} falhou: ${lastError}`, { remoteJid, type });
+                addLog('SEND_FAILED', instanceName + ' falhou: ' + lastError, { remoteJid, type });
             }
             
         } catch (error) {
             lastError = error.message;
-            addLog('SEND_ERROR', `${instanceName} erro: ${error.message}`, { remoteJid, type });
+            addLog('SEND_ERROR', instanceName + ' erro: ' + error.message, { remoteJid, type });
         }
     }
     
-    // Todas as instâncias falharam
-    addLog('SEND_ALL_FAILED', `Todas as instâncias falharam para ${remoteJid}`, { lastError });
+    addLog('SEND_ALL_FAILED', 'Todas as instâncias falharam para ' + remoteJid, { lastError });
     return { success: false, error: lastError };
 }
 
@@ -945,11 +350,10 @@ async function waitForAck(clientMessageId, remoteJid, instanceName) {
         
         pendingAcks.set(clientMessageId, ackData);
         
-        // Timeout para ACK
         setTimeout(() => {
             if (pendingAcks.has(clientMessageId)) {
                 pendingAcks.delete(clientMessageId);
-                addLog('ACK_TIMEOUT', `Timeout de ACK para ${clientMessageId}`, { remoteJid, instanceName });
+                addLog('ACK_TIMEOUT', 'Timeout de ACK para ' + clientMessageId, { remoteJid, instanceName });
                 resolve({ success: false, error: 'ACK timeout' });
             }
         }, ACK_TIMEOUT_MS);
@@ -975,7 +379,7 @@ async function startFunnel(remoteJid, funnelId, orderCode, customerName, product
     
     conversations.set(remoteJid, conversation);
     
-    addLog('FUNNEL_START', `Iniciando funil ${funnelId} para ${remoteJid}`, { orderCode, productType });
+    addLog('FUNNEL_START', 'Iniciando funil ' + funnelId + ' para ' + remoteJid, { orderCode, productType });
     
     await sendStep(remoteJid);
 }
@@ -990,16 +394,14 @@ async function sendStep(remoteJid) {
     const step = funnel.steps[conversation.stepIndex];
     if (!step) return;
     
-    // Verificar idempotência
-    const idempotencyKey = `SEND:${remoteJid}:${conversation.funnelId}:${conversation.stepIndex}`;
+    const idempotencyKey = 'SEND:' + remoteJid + ':' + conversation.funnelId + ':' + conversation.stepIndex;
     if (checkIdempotency(idempotencyKey)) {
-        addLog('STEP_DUPLICATE', `Passo duplicado ignorado: ${conversation.funnelId}[${conversation.stepIndex}]`);
+        addLog('STEP_DUPLICATE', 'Passo duplicado ignorado: ' + conversation.funnelId + '[' + conversation.stepIndex + ']');
         return;
     }
     
-    addLog('STEP_SEND', `Enviando passo ${conversation.stepIndex} do funil ${conversation.funnelId}`, { step });
+    addLog('STEP_SEND', 'Enviando passo ' + conversation.stepIndex + ' do funil ' + conversation.funnelId, { step });
     
-    // Enviar mensagem
     const result = await sendWithFallback(
         remoteJid, 
         step.type, 
@@ -1013,21 +415,19 @@ async function sendStep(remoteJid) {
         if (step.waitForReply) {
             conversation.waiting_for_response = true;
             
-            // Configurar timeout se especificado
             if (step.timeoutMinutes) {
                 setTimeout(() => {
                     handleStepTimeout(remoteJid, conversation.stepIndex);
                 }, step.timeoutMinutes * 60 * 1000);
             }
         } else {
-            // Avançar automaticamente para o próximo passo
             await advanceConversation(remoteJid, null, 'auto');
         }
         
         conversations.set(remoteJid, conversation);
-        addLog('STEP_SUCCESS', `Passo enviado com sucesso: ${conversation.funnelId}[${conversation.stepIndex}]`);
+        addLog('STEP_SUCCESS', 'Passo enviado com sucesso: ' + conversation.funnelId + '[' + conversation.stepIndex + ']');
     } else {
-        addLog('STEP_FAILED', `Falha no envio do passo: ${result.error}`, { conversation });
+        addLog('STEP_FAILED', 'Falha no envio do passo: ' + result.error, { conversation });
     }
 }
 
@@ -1048,13 +448,11 @@ async function advanceConversation(remoteJid, replyText, reason) {
     } else if (reason === 'timeout' && currentStep.nextOnTimeout !== undefined) {
         nextStepIndex = currentStep.nextOnTimeout;
     } else {
-        // Próximo passo sequencial
         nextStepIndex = conversation.stepIndex + 1;
     }
     
-    // Verificar se existe o próximo passo
     if (nextStepIndex >= funnel.steps.length) {
-        addLog('FUNNEL_END', `Funil ${conversation.funnelId} concluído para ${remoteJid}`);
+        addLog('FUNNEL_END', 'Funil ' + conversation.funnelId + ' concluído para ' + remoteJid);
         return;
     }
     
@@ -1066,9 +464,8 @@ async function advanceConversation(remoteJid, replyText, reason) {
     
     conversations.set(remoteJid, conversation);
     
-    addLog('STEP_ADVANCE', `Avançando para passo ${nextStepIndex} (motivo: ${reason})`, { conversation });
+    addLog('STEP_ADVANCE', 'Avançando para passo ' + nextStepIndex + ' (motivo: ' + reason + ')', { conversation });
     
-    // Enviar próximo passo
     await sendStep(remoteJid);
 }
 
@@ -1078,10 +475,10 @@ async function handleStepTimeout(remoteJid, expectedStepIndex) {
     if (!conversation || 
         conversation.stepIndex !== expectedStepIndex || 
         !conversation.waiting_for_response) {
-        return; // Conversa mudou ou não está mais aguardando
+        return;
     }
     
-    addLog('STEP_TIMEOUT', `Timeout do passo ${expectedStepIndex} para ${remoteJid}`);
+    addLog('STEP_TIMEOUT', 'Timeout do passo ' + expectedStepIndex + ' para ' + remoteJid);
     await advanceConversation(remoteJid, null, 'timeout');
 }
 
@@ -1095,7 +492,7 @@ app.post('/webhook/kirvano', async (req, res) => {
         const method = String(data.payment?.method || data.payment_method || '').toUpperCase();
         
         const saleId = data.sale_id || data.checkout_id;
-        const orderCode = saleId || `ORDER_${Date.now()}`;
+        const orderCode = saleId || 'ORDER_' + Date.now();
         const customerName = data.customer?.name || 'Cliente';
         const customerPhone = data.customer?.phone_number || '';
         const totalPrice = data.total_price || 'R$ 0,00';
@@ -1107,33 +504,29 @@ app.post('/webhook/kirvano', async (req, res) => {
             return res.json({ success: false, message: 'Telefone inválido' });
         }
         
-        // Verificar idempotência
-        const idempotencyKey = `KIRVANO:${event}:${remoteJid}:${orderCode}`;
+        const idempotencyKey = 'KIRVANO:' + event + ':' + remoteJid + ':' + orderCode;
         if (checkIdempotency(idempotencyKey)) {
             return res.json({ success: true, message: 'Evento duplicado ignorado' });
         }
         
-        // Identificar produto
         let productType = 'UNKNOWN';
         if (data.products && data.products.length > 0) {
             const offerId = data.products[0].offer_id;
             productType = PRODUCT_MAPPING[offerId] || 'UNKNOWN';
         }
         
-        addLog('KIRVANO_EVENT', `${event} - ${productType} - ${customerName}`, { orderCode, remoteJid });
+        addLog('KIRVANO_EVENT', event + ' - ' + productType + ' - ' + customerName, { orderCode, remoteJid });
         
-        // Determinar qual funil usar
         let funnelId;
         const isApproved = event.includes('APPROVED') || event.includes('PAID') || status === 'APPROVED';
         const isPix = method.includes('PIX') || event.includes('PIX');
         
         if (isApproved) {
-            // Cancelar timeout de PIX se existir
             const pixTimeout = pixTimeouts.get(remoteJid);
             if (pixTimeout) {
                 clearTimeout(pixTimeout.timeout);
                 pixTimeouts.delete(remoteJid);
-                addLog('PIX_TIMEOUT_CANCELED', `Timeout cancelado para ${remoteJid}`, { orderCode });
+                addLog('PIX_TIMEOUT_CANCELED', 'Timeout cancelado para ' + remoteJid, { orderCode });
             }
             
             funnelId = productType === 'FAB' ? 'FAB_APROVADA' : 'CS_APROVADA';
@@ -1143,20 +536,16 @@ app.post('/webhook/kirvano', async (req, res) => {
         } else if (isPix) {
             funnelId = productType === 'FAB' ? 'FAB_PIX' : 'CS_PIX';
             
-            // Cancelar timeout anterior se existir
             const existingTimeout = pixTimeouts.get(remoteJid);
             if (existingTimeout) {
                 clearTimeout(existingTimeout.timeout);
             }
             
-            // Iniciar funil imediatamente
             await startFunnel(remoteJid, funnelId, orderCode, customerName, productType, totalPrice);
             
-            // Configurar timeout de 7 minutos para PIX
             const timeout = setTimeout(async () => {
                 const conversation = conversations.get(remoteJid);
                 if (conversation && conversation.orderCode === orderCode) {
-                    // Forçar ir para o passo de timeout (geralmente step 2)
                     const funnel = funis.get(conversation.funnelId);
                     if (funnel && funnel.steps[2]) {
                         conversation.stepIndex = 2;
@@ -1198,7 +587,6 @@ app.post('/webhook/evolution', async (req, res) => {
         const messageText = extractMessageText(messageData.message);
         
         if (fromMe) {
-            // Verificar se é confirmação (ACK) de mensagem nossa
             const clientMessageIdMatch = messageText.match(/\[#cmid:([^\]]+)\]/);
             if (clientMessageIdMatch) {
                 const clientMessageId = clientMessageIdMatch[1];
@@ -1206,22 +594,20 @@ app.post('/webhook/evolution', async (req, res) => {
                 
                 if (pendingAck) {
                     pendingAcks.delete(clientMessageId);
-                    addLog('ACK_RECEIVED', `ACK confirmado: ${clientMessageId}`, { remoteJid });
+                    addLog('ACK_RECEIVED', 'ACK confirmado: ' + clientMessageId, { remoteJid });
                     pendingAck.resolve({ success: true, clientMessageId });
                 }
             }
         } else {
-            // Resposta do cliente
             const conversation = conversations.get(remoteJid);
             
             if (conversation && conversation.waiting_for_response) {
-                // Verificar idempotência
-                const idempotencyKey = `REPLY:${remoteJid}:${conversation.funnelId}:${conversation.stepIndex}`;
+                const idempotencyKey = 'REPLY:' + remoteJid + ':' + conversation.funnelId + ':' + conversation.stepIndex;
                 if (checkIdempotency(idempotencyKey)) {
                     return res.json({ success: true, message: 'Resposta duplicada' });
                 }
                 
-                addLog('CLIENT_REPLY', `Resposta recebida de ${remoteJid}`, { 
+                addLog('CLIENT_REPLY', 'Resposta recebida de ' + remoteJid, { 
                     text: messageText.substring(0, 100),
                     step: conversation.stepIndex 
                 });
@@ -1240,7 +626,6 @@ app.post('/webhook/evolution', async (req, res) => {
 
 // ============ ENDPOINTS DE API ============
 
-// Status
 app.get('/status', (req, res) => {
     const activeConversations = Array.from(conversations.entries()).map(([remoteJid, conv]) => ({
         remoteJid,
@@ -1269,7 +654,6 @@ app.get('/status', (req, res) => {
     });
 });
 
-// Funis
 app.get('/funnels', (req, res) => {
     res.json(Array.from(funis.values()));
 });
@@ -1282,7 +666,7 @@ app.post('/funnels', (req, res) => {
     }
     
     funis.set(funnel.id, funnel);
-    addLog('FUNNEL_UPDATED', `Funil ${funnel.id} atualizado`);
+    addLog('FUNNEL_UPDATED', 'Funil ' + funnel.id + ' atualizado');
     
     res.json({ success: true, funnel });
 });
@@ -1292,14 +676,13 @@ app.delete('/funnels/:id', (req, res) => {
     
     if (funis.has(id)) {
         funis.delete(id);
-        addLog('FUNNEL_DELETED', `Funil ${id} removido`);
+        addLog('FUNNEL_DELETED', 'Funil ' + id + ' removido');
         res.json({ success: true });
     } else {
         res.status(404).json({ error: 'Funil não encontrado' });
     }
 });
 
-// Conversas
 app.get('/conversations', (req, res) => {
     const conversationsList = Array.from(conversations.entries()).map(([remoteJid, conv]) => ({
         remoteJid,
@@ -1320,7 +703,7 @@ app.post('/conversations/:remoteJid/advance', async (req, res) => {
         return res.status(404).json({ error: 'Conversa não encontrada' });
     }
     
-    addLog('MANUAL_ADVANCE', `Avançando conversa manualmente: ${decodedJid}`);
+    addLog('MANUAL_ADVANCE', 'Avançando conversa manualmente: ' + decodedJid);
     await advanceConversation(decodedJid, null, 'manual');
     
     res.json({ success: true });
@@ -1333,14 +716,13 @@ app.post('/conversations/:remoteJid/reset', (req, res) => {
     if (conversations.has(decodedJid)) {
         conversations.delete(decodedJid);
         stickyInstances.delete(decodedJid);
-        addLog('CONVERSATION_RESET', `Conversa resetada: ${decodedJid}`);
+        addLog('CONVERSATION_RESET', 'Conversa resetada: ' + decodedJid);
         res.json({ success: true });
     } else {
         res.status(404).json({ error: 'Conversa não encontrada' });
     }
 });
 
-// Envio manual
 app.post('/send', async (req, res) => {
     const { remoteJid, type, text, mediaUrl } = req.body;
     
@@ -1348,7 +730,7 @@ app.post('/send', async (req, res) => {
         return res.status(400).json({ error: 'remoteJid e type são obrigatórios' });
     }
     
-    addLog('MANUAL_SEND', `Envio manual: ${type} para ${remoteJid}`);
+    addLog('MANUAL_SEND', 'Envio manual: ' + type + ' para ' + remoteJid);
     
     const result = await sendWithFallback(remoteJid, type, text, mediaUrl);
     
@@ -1357,92 +739,15 @@ app.post('/send', async (req, res) => {
 
 // ============ PAINEL WEB ============
 app.get('/', (req, res) => {
-                        'steps: currentFunnel ? currentFunnel.steps : []' +
-                    '};' +
-                    
-                    'try {' +
-                        'await fetch("/funnels", {' +
-                            'method: "POST",' +
-                            'headers: { "Content-Type": "application/json" },' +
-                            'body: JSON.stringify(funnel)' +
-                        '});' +
-                        
-                        'closeFunnelModal();' +
-                        'refreshData();' +
-                    '} catch (error) {' +
-                        'alert("Erro ao salvar funil");' +
-                    '}' +
-                '}' +
-                
-                'async function sendDebugMessage() {' +
-                    'var remoteJid = document.getElementById("debugPhone").value;' +
-                    'var type = document.getElementById("debugType").value;' +
-                    'var text = document.getElementById("debugText").value;' +
-                    'var mediaUrl = document.getElementById("debugMediaUrl").value;' +
-                    
-                    'if (!remoteJid || !type) {' +
-                        'alert("Telefone e tipo são obrigatórios");' +
-                        'return;' +
-                    '}' +
-                    
-                    'try {' +
-                        'var response = await fetch("/send", {' +
-                            'method: "POST",' +
-                            'headers: { "Content-Type": "application/json" },' +
-                            'body: JSON.stringify({ remoteJid: remoteJid, type: type, text: text, mediaUrl: mediaUrl })' +
-                        '});' +
-                        
-                        'var result = await response.json();' +
-                        'alert(result.success ? "Mensagem enviada!" : "Erro: " + result.error);' +
-                    '} catch (error) {' +
-                        'alert("Erro ao enviar mensagem");' +
-                    '}' +
-                '}' +
-                
-                'setInterval(refreshData, 5000);' +
-                'refreshData();' +
-            '</script>' +
-        '</body>' +
-        '</html>'
-    );
+    res.send('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Kirvano - Sistema Online</title><style>body{font-family:Arial,sans-serif;margin:50px;background:#f5f5f5}h1{color:#333;text-align:center}</style></head><body><h1>🚀 Sistema Kirvano Online</h1><p>O sistema está funcionando corretamente!</p><p><strong>Endpoints disponíveis:</strong></p><ul><li>POST /webhook/kirvano - Recebe eventos do Kirvano</li><li>POST /webhook/evolution - Recebe eventos da Evolution</li><li>GET /status - Status do sistema</li><li>GET /funnels - Lista funis</li></ul></body></html>');
 });
 
 // ============ INICIALIZAÇÃO ============
 app.listen(PORT, () => {
-    console.log(`
-╔═══════════════════════════════════════════════════════════╗
-║                  KIRVANO - SISTEMA DE FUNIS               ║
-╚═══════════════════════════════════════════════════════════╝
-
-🚀 Servidor rodando na porta ${PORT}
-🔗 Painel: http://localhost:${PORT}
-
-📡 ENDPOINTS DISPONÍVEIS:
-   • POST /webhook/kirvano    - Recebe eventos do Kirvano
-   • POST /webhook/evolution  - Recebe eventos da Evolution
-   • GET  /status            - Status do sistema
-   • GET  /funnels           - Lista funis
-   • POST /funnels           - Cria/atualiza funil
-   • DELETE /funnels/:id     - Remove funil
-   • GET  /conversations     - Lista conversas
-   • POST /send             - Envio manual
-
-🎯 FUNCIONALIDADES ATIVAS:
-   ✓ Fallback sequencial GABY01→GABY09
-   ✓ ACK via webhook (fromMe=true)
-   ✓ Funis com passos configuráveis
-   ✓ PIX timeout de 7 minutos
-   ✓ Sticky instances por cliente
-   ✓ Painel web completo
-   ✓ Idempotência em todos os fluxos
-
-🔧 CONFIGURAÇÃO:
-   • Evolution: ${EVOLUTION_BASE_URL}
-   • ACK Timeout: ${ACK_TIMEOUT_MS}ms
-   • Instâncias: ${INSTANCES.length}
-   • Produtos: CS, FAB
-   • Funis padrão: 4 configurados
-
-═══════════════════════════════════════════════════════════════
-    `);
+    console.log('Sistema Kirvano rodando na porta ' + PORT);
+    console.log('Webhooks:');
+    console.log('- Kirvano: /webhook/kirvano');
+    console.log('- Evolution: /webhook/evolution');
+    console.log('Status: /status');
+    console.log('Funis configurados: ' + funis.size);
 });
