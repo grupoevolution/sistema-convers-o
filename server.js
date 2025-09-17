@@ -1185,18 +1185,18 @@ app.get('/', (req, res) => {
                     '<span class="badge badge-warning">Aguardando</span>' : 
                     '<span class="badge badge-success">Pronto</span>';
                 
-                html += `<tr>
-                    <td>${phone}</td>
-                    <td><span class="badge badge-info">${conv.productType}</span></td>
-                    <td>${conv.funnelId}</td>
-                    <td>${conv.stepIndex}</td>
-                    <td>${statusBadge}</td>
-                    <td>${conv.stickyInstance || '-'}</td>
-                    <td>
-                        <button class="btn btn-small" onclick="advanceConversation('${encodeURIComponent(conv.remoteJid)}')">Avançar</button>
-                        <button class="btn btn-small" onclick="resetConversation('${encodeURIComponent(conv.remoteJid)}')">Reset</button>
-                    </td>
-                </tr>`;
+                html += '<tr>' +
+                    '<td>' + phone + '</td>' +
+                    '<td><span class="badge badge-info">' + conv.productType + '</span></td>' +
+                    '<td>' + conv.funnelId + '</td>' +
+                    '<td>' + conv.stepIndex + '</td>' +
+                    '<td>' + statusBadge + '</td>' +
+                    '<td>' + (conv.stickyInstance || '-') + '</td>' +
+                    '<td>' +
+                        '<button class="btn btn-small" onclick="advanceConversation(\'' + encodeURIComponent(conv.remoteJid) + '\')">Avançar</button>' +
+                        '<button class="btn btn-small" onclick="resetConversation(\'' + encodeURIComponent(conv.remoteJid) + '\')">Reset</button>' +
+                    '</td>' +
+                '</tr>';
             });
             
             html += '</tbody></table>';
@@ -1214,18 +1214,16 @@ app.get('/', (req, res) => {
             
             let html = '';
             funnels.forEach(funnel => {
-                html += `
-                    <div class="step-item">
-                        <div class="step-header">
-                            <h4>${funnel.name} (${funnel.id})</h4>
-                            <div>
-                                <button class="btn btn-small" onclick="editFunnel('${funnel.id}')">Editar</button>
-                                <button class="btn btn-small" onclick="deleteFunnel('${funnel.id}')">Excluir</button>
-                            </div>
-                        </div>
-                        <p><strong>Passos:</strong> ${funnel.steps.length}</p>
-                    </div>
-                `;
+                html += '<div class="step-item">' +
+                    '<div class="step-header">' +
+                        '<h4>' + funnel.name + ' (' + funnel.id + ')</h4>' +
+                        '<div>' +
+                            '<button class="btn btn-small" onclick="editFunnel(\'' + funnel.id + '\')">Editar</button>' +
+                            '<button class="btn btn-small" onclick="deleteFunnel(\'' + funnel.id + '\')">Excluir</button>' +
+                        '</div>' +
+                    '</div>' +
+                    '<p><strong>Passos:</strong> ' + funnel.steps.length + '</p>' +
+                '</div>';
             });
             
             content.innerHTML = html;
@@ -1246,11 +1244,9 @@ app.get('/', (req, res) => {
                 const className = log.type.includes('ERROR') ? 'log-error' : 
                                 log.type.includes('SUCCESS') ? 'log-success' : '';
                 
-                html += `
-                    <div class="log-item ${className}">
-                        <strong>${timestamp}</strong> [${log.type}] ${log.message}
-                    </div>
-                `;
+                html += '<div class="log-item ' + className + '">' +
+                    '<strong>' + timestamp + '</strong> [' + log.type + '] ' + log.message +
+                '</div>';
             });
             
             content.innerHTML = html;
@@ -1312,57 +1308,55 @@ app.get('/', (req, res) => {
             
             let html = '';
             steps.forEach((step, index) => {
-                html += `
-                    <div class="step-item">
-                        <div class="step-header">
-                            <h5>Passo ${index}</h5>
-                            <button class="btn btn-small" onclick="removeStep(${index})">Remover</button>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label>Tipo</label>
-                            <select onchange="updateStep(${index}, 'type', this.value)">
-                                <option value="text" ${step.type === 'text' ? 'selected' : ''}>Texto</option>
-                                <option value="image" ${step.type === 'image' ? 'selected' : ''}>Imagem</option>
-                                <option value="video" ${step.type === 'video' ? 'selected' : ''}>Vídeo</option>
-                                <option value="image+text" ${step.type === 'image+text' ? 'selected' : ''}>Imagem + Texto</option>
-                                <option value="video+text" ${step.type === 'video+text' ? 'selected' : ''}>Vídeo + Texto</option>
-                            </select>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label>Texto</label>
-                            <textarea rows="2" onchange="updateStep(${index}, 'text', this.value)">${step.text || ''}</textarea>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label>URL da Mídia</label>
-                            <input type="text" value="${step.mediaUrl || ''}" onchange="updateStep(${index}, 'mediaUrl', this.value)">
-                        </div>
-                        
-                        <div class="form-group">
-                            <label>
-                                <input type="checkbox" ${step.waitForReply ? 'checked' : ''} onchange="updateStep(${index}, 'waitForReply', this.checked)">
-                                Aguardar Resposta
-                            </label>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label>Timeout (minutos)</label>
-                            <input type="number" value="${step.timeoutMinutes || ''}" onchange="updateStep(${index}, 'timeoutMinutes', parseInt(this.value) || undefined)">
-                        </div>
-                        
-                        <div class="form-group">
-                            <label>Próximo passo na resposta</label>
-                            <input type="number" value="${step.nextOnReply || ''}" onchange="updateStep(${index}, 'nextOnReply', parseInt(this.value) || undefined)">
-                        </div>
-                        
-                        <div class="form-group">
-                            <label>Próximo passo no timeout</label>
-                            <input type="number" value="${step.nextOnTimeout || ''}" onchange="updateStep(${index}, 'nextOnTimeout', parseInt(this.value) || undefined)">
-                        </div>
-                    </div>
-                `;
+                html += '<div class="step-item">' +
+                    '<div class="step-header">' +
+                        '<h5>Passo ' + index + '</h5>' +
+                        '<button class="btn btn-small" onclick="removeStep(' + index + ')">Remover</button>' +
+                    '</div>' +
+                    
+                    '<div class="form-group">' +
+                        '<label>Tipo</label>' +
+                        '<select onchange="updateStep(' + index + ', \'type\', this.value)">' +
+                            '<option value="text"' + (step.type === 'text' ? ' selected' : '') + '>Texto</option>' +
+                            '<option value="image"' + (step.type === 'image' ? ' selected' : '') + '>Imagem</option>' +
+                            '<option value="video"' + (step.type === 'video' ? ' selected' : '') + '>Vídeo</option>' +
+                            '<option value="image+text"' + (step.type === 'image+text' ? ' selected' : '') + '>Imagem + Texto</option>' +
+                            '<option value="video+text"' + (step.type === 'video+text' ? ' selected' : '') + '>Vídeo + Texto</option>' +
+                        '</select>' +
+                    '</div>' +
+                    
+                    '<div class="form-group">' +
+                        '<label>Texto</label>' +
+                        '<textarea rows="2" onchange="updateStep(' + index + ', \'text\', this.value)">' + (step.text || '') + '</textarea>' +
+                    '</div>' +
+                    
+                    '<div class="form-group">' +
+                        '<label>URL da Mídia</label>' +
+                        '<input type="text" value="' + (step.mediaUrl || '') + '" onchange="updateStep(' + index + ', \'mediaUrl\', this.value)">' +
+                    '</div>' +
+                    
+                    '<div class="form-group">' +
+                        '<label>' +
+                            '<input type="checkbox"' + (step.waitForReply ? ' checked' : '') + ' onchange="updateStep(' + index + ', \'waitForReply\', this.checked)">' +
+                            'Aguardar Resposta' +
+                        '</label>' +
+                    '</div>' +
+                    
+                    '<div class="form-group">' +
+                        '<label>Timeout (minutos)</label>' +
+                        '<input type="number" value="' + (step.timeoutMinutes || '') + '" onchange="updateStep(' + index + ', \'timeoutMinutes\', parseInt(this.value) || undefined)">' +
+                    '</div>' +
+                    
+                    '<div class="form-group">' +
+                        '<label>Próximo passo na resposta</label>' +
+                        '<input type="number" value="' + (step.nextOnReply || '') + '" onchange="updateStep(' + index + ', \'nextOnReply\', parseInt(this.value) || undefined)">' +
+                    '</div>' +
+                    
+                    '<div class="form-group">' +
+                        '<label>Próximo passo no timeout</label>' +
+                        '<input type="number" value="' + (step.nextOnTimeout || '') + '" onchange="updateStep(' + index + ', \'nextOnTimeout\', parseInt(this.value) || undefined)">' +
+                    '</div>' +
+                '</div>';
             });
             
             container.innerHTML = html;
