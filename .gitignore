@@ -22,6 +22,10 @@ pids/
 # Coverage directory used by tools like istanbul
 coverage/
 
+# Data directory (persistent storage)
+data/
+*.json
+
 # Mac system files
 .DS_Store
 
