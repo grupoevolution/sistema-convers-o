@@ -371,26 +371,103 @@ async function sendStep(remoteJid) {
     
     addLog('STEP_SEND', 'Enviando passo ' + conversation.stepIndex + ' do funil ' + conversation.funnelId, { step });
     
-    const result = await sendWithFallback(remoteJid, step.type, step.text, step.mediaUrl);
+    // DELAY ANTES (se configurado)
+    if (step.delayBefore && step.delayBefore > 0) {
+        addLog('STEP_DELAY', 'Aguardando ' + step.delayBefore + 's antes do passo ' + conversation.stepIndex);
+        await new Promise(resolve => setTimeout(resolve, step.delayBefore * 1000));
+    }
+    
+    // MOSTRAR DIGITANDO (se configurado)
+    if (step.showTyping) {
+        await sendTypingIndicator(remoteJid);
+    }
+    
+    let result = { success: true };
+    
+    // PROCESSAR TIPO DO PASSO
+    if (step.type === 'delay') {
+        // Passo de delay puro
+        const delaySeconds = step.delaySeconds || 10;
+        addLog('STEP_DELAY', 'Executando delay de ' + delaySeconds + 's no passo ' + conversation.stepIndex);
+        await new Promise(resolve => setTimeout(resolve, delaySeconds * 1000));
+        
+    } else if (step.type === 'typing') {
+        // Passo de digitando puro
+        const typingSeconds = step.typingSeconds || 3;
+        addLog('STEP_TYPING', 'Mostrando digitando por ' + typingSeconds + 's no passo ' + conversation.stepIndex);
+        await sendTypingIndicator(remoteJid, typingSeconds);
+        
+    } else if (step.type === 'wait_reply') {
+        // Passo de aguardar resposta (gatilho)
+        addLog('STEP_WAIT_REPLY', 'Aguardando resposta do cliente no passo ' + conversation.stepIndex);
+        conversation.waiting_for_response = true;
+        
+        // Configurar timeout se especificado
+        if (step.timeoutMinutes) {
+            setTimeout(() => {
+                handleStepTimeout(remoteJid, conversation.stepIndex);
+            }, step.timeoutMinutes * 60 * 1000);
+        }
+        
+        // Para passos de aguardar resposta, não continuar automaticamente
+        conversations.set(remoteJid, conversation);
+        return;
+        
+    } else {
+        // Passo de mensagem (texto, imagem, vídeo)
+        result = await sendWithFallback(remoteJid, step.type, step.text, step.mediaUrl);
+    }
     
     if (result.success) {
         conversation.lastSystemMessage = new Date();
         
-        if (step.waitForReply) {
+        if (step.waitForReply && step.type !== 'delay' && step.type !== 'typing' && step.type !== 'wait_reply') {
+            // Aguardar resposta em mensagens normais (funcionalidade antiga mantida)
             conversation.waiting_for_response = true;
+            
             if (step.timeoutMinutes) {
                 setTimeout(() => {
                     handleStepTimeout(remoteJid, conversation.stepIndex);
                 }, step.timeoutMinutes * 60 * 1000);
             }
         } else {
+            // Avançar automaticamente para o próximo passo
             await advanceConversation(remoteJid, null, 'auto');
         }
         
         conversations.set(remoteJid, conversation);
-        addLog('STEP_SUCCESS', 'Passo enviado com sucesso: ' + conversation.funnelId + '[' + conversation.stepIndex + ']');
+        addLog('STEP_SUCCESS', 'Passo executado com sucesso: ' + conversation.funnelId + '[' + conversation.stepIndex + ']');
     } else {
         addLog('STEP_FAILED', 'Falha no envio do passo: ' + result.error, { conversation });
+    }
+}
+
+// NOVA FUNÇÃO: Enviar indicador de digitação
+async function sendTypingIndicator(remoteJid, durationSeconds = 3) {
+    const instanceName = stickyInstances.get(remoteJid) || INSTANCES[0];
+    
+    try {
+        // Iniciar digitação
+        await sendToEvolution(instanceName, '/chat/sendPresence', {
+            number: remoteJid.replace('@s.whatsapp.net', ''),
+            presence: 'composing'
+        });
+        
+        addLog('TYPING_START', 'Iniciando digitação para ' + remoteJid + ' por ' + durationSeconds + 's');
+        
+        // Aguardar o tempo especificado
+        await new Promise(resolve => setTimeout(resolve, durationSeconds * 1000));
+        
+        // Parar digitação
+        await sendToEvolution(instanceName, '/chat/sendPresence', {
+            number: remoteJid.replace('@s.whatsapp.net', ''),
+            presence: 'paused'
+        });
+        
+        addLog('TYPING_END', 'Finalizando digitação para ' + remoteJid);
+        
+    } catch (error) {
+        addLog('TYPING_ERROR', 'Erro ao enviar digitação: ' + error.message, { remoteJid });
     }
 }
 
