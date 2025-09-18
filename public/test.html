@@ -263,6 +263,15 @@
                 <div class="log-entry">Carregando logs...</div>
             </div>
         </div>
+
+        <!-- DEBUG EVOLUTION -->
+        <div class="test-card">
+            <h3>🔧 Debug Evolution API</h3>
+            <button class="btn btn-secondary" onclick="debugEvolution()" style="margin-bottom: 16px;">Verificar Configuração</button>
+            <div id="debugContainer">
+                <div class="log-entry">Clique no botão acima para verificar a configuração da Evolution API</div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -454,6 +463,50 @@ Resposta: ${JSON.stringify(result, null, 2)}`, 'success');
             
             // Scroll para o topo
             container.scrollTop = 0;
+        }
+
+        // DEBUG EVOLUTION
+        async function debugEvolution() {
+            const container = document.getElementById('debugContainer');
+            container.innerHTML = '<div class="log-entry log-info">Verificando configuração...</div>';
+            
+            try {
+                const response = await fetch('/api/debug/evolution');
+                const debug = await response.json();
+                
+                let html = '';
+                
+                // Configuração
+                html += '<div class="log-entry log-info">URL Evolution: ' + debug.evolution_base_url + '</div>';
+                html += '<div class="log-entry ' + (debug.evolution_api_key_configured ? 'log-success' : 'log-error') + '">';
+                html += 'API Key: ' + (debug.evolution_api_key_configured ? 'Configurada (' + debug.evolution_api_key_length + ' caracteres)' : 'NÃO CONFIGURADA');
+                html += '</div>';
+                
+                html += '<div class="log-entry log-info">Instâncias: ' + debug.instances.join(', ') + '</div>';
+                
+                // Resultado do teste
+                if (debug.test_results.length > 0) {
+                    const test = debug.test_results[0];
+                    html += '<div class="log-entry log-info">--- Teste de Conexão ---</div>';
+                    
+                    if (test.error) {
+                        html += '<div class="log-entry log-error">Erro: ' + test.error + '</div>';
+                        if (test.code) {
+                            html += '<div class="log-entry log-error">Código: ' + test.code + '</div>';
+                        }
+                    } else {
+                        html += '<div class="log-entry ' + (test.status === 200 ? 'log-success' : 'log-error') + '">';
+                        html += 'Status HTTP: ' + test.status + '</div>';
+                        html += '<div class="log-entry log-info">URL Testada: ' + test.url + '</div>';
+                        html += '<div class="log-entry log-info">Resposta: ' + JSON.stringify(test.response, null, 2) + '</div>';
+                    }
+                }
+                
+                container.innerHTML = html;
+                
+            } catch (error) {
+                container.innerHTML = '<div class="log-entry log-error">Erro ao verificar: ' + error.message + '</div>';
+            }
         }
 
         // AUTO-REFRESH DOS LOGS
