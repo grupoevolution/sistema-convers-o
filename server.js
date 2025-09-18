@@ -2,6 +2,7 @@ const express = require('express');
 const axios = require('axios');
 const { v4: uuidv4 } = require('uuid');
 const path = require('path');
+const fs = require('fs').promises;
 const app = express();
 
 // ============ CONFIGURAÇÕES ============
@@ -9,7 +10,10 @@ const EVOLUTION_BASE_URL = process.env.EVOLUTION_BASE_URL || 'https://evo.flowza
 const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY || 'SUA_API_KEY_AQUI';
 const PIX_TIMEOUT = 7 * 60 * 1000; // 7 minutos
 const ACK_TIMEOUT_MS = parseInt(process.env.ACK_TIMEOUT_MS) || 10000; // 10 segundos
+// Configurações
 const PORT = process.env.PORT || 3000;
+const DATA_FILE = path.join(__dirname, 'data', 'funnels.json');
+const CONVERSATIONS_FILE = path.join(__dirname, 'data', 'conversations.json');
 
 // Mapeamento dos produtos Kirvano
 const PRODUCT_MAPPING = {
@@ -142,6 +146,111 @@ const defaultFunnels = {
         ]
     }
 };
+
+// ============ PERSISTÊNCIA DE DADOS ============
+
+// Garantir que a pasta data existe
+async function ensureDataDir() {
+    try {
+        await fs.mkdir(path.join(__dirname, 'data'), { recursive: true });
+    } catch (error) {
+        console.log('Pasta data já existe ou erro ao criar:', error.message);
+    }
+}
+
+// Salvar funis no arquivo
+async function saveFunnelsToFile() {
+    try {
+        await ensureDataDir();
+        const funnelsArray = Array.from(funis.values());
+        await fs.writeFile(DATA_FILE, JSON.stringify(funnelsArray, null, 2));
+        addLog('DATA_SAVE', 'Funis salvos em arquivo: ' + funnelsArray.length + ' funis');
+    } catch (error) {
+        addLog('DATA_SAVE_ERROR', 'Erro ao salvar funis: ' + error.message);
+    }
+}
+
+// Carregar funis do arquivo
+async function loadFunnelsFromFile() {
+    try {
+        const data = await fs.readFile(DATA_FILE, 'utf8');
+        const funnelsArray = JSON.parse(data);
+        
+        // Limpar funis atuais e recarregar
+        funis.clear();
+        
+        funnelsArray.forEach(funnel => {
+            funis.set(funnel.id, funnel);
+        });
+        
+        addLog('DATA_LOAD', 'Funis carregados do arquivo: ' + funnelsArray.length + ' funis');
+        return true;
+    } catch (error) {
+        addLog('DATA_LOAD_ERROR', 'Erro ao carregar funis (usando padrões): ' + error.message);
+        return false;
+    }
+}
+
+// Salvar conversas ativas (para não perder o que está em andamento)
+async function saveConversationsToFile() {
+    try {
+        await ensureDataDir();
+        const conversationsArray = Array.from(conversations.entries()).map(([key, value]) => ({
+            remoteJid: key,
+            ...value,
+            createdAt: value.createdAt.toISOString(),
+            lastSystemMessage: value.lastSystemMessage ? value.lastSystemMessage.toISOString() : null,
+            lastReply: value.lastReply ? value.lastReply.toISOString() : null
+        }));
+        
+        await fs.writeFile(CONVERSATIONS_FILE, JSON.stringify({
+            conversations: conversationsArray,
+            stickyInstances: Array.from(stickyInstances.entries())
+        }, null, 2));
+        
+        addLog('DATA_SAVE', 'Conversas salvas: ' + conversationsArray.length + ' conversas');
+    } catch (error) {
+        addLog('DATA_SAVE_ERROR', 'Erro ao salvar conversas: ' + error.message);
+    }
+}
+
+// Carregar conversas ativas
+async function loadConversationsFromFile() {
+    try {
+        const data = await fs.readFile(CONVERSATIONS_FILE, 'utf8');
+        const parsed = JSON.parse(data);
+        
+        // Recarregar conversas
+        conversations.clear();
+        parsed.conversations.forEach(conv => {
+            const conversation = {
+                ...conv,
+                createdAt: new Date(conv.createdAt),
+                lastSystemMessage: conv.lastSystemMessage ? new Date(conv.lastSystemMessage) : null,
+                lastReply: conv.lastReply ? new Date(conv.lastReply) : null
+            };
+            conversations.set(conv.remoteJid, conversation);
+        });
+        
+        // Recarregar sticky instances
+        stickyInstances.clear();
+        parsed.stickyInstances.forEach(([key, value]) => {
+            stickyInstances.set(key, value);
+        });
+        
+        addLog('DATA_LOAD', 'Conversas carregadas: ' + parsed.conversations.length + ' conversas');
+        return true;
+    } catch (error) {
+        addLog('DATA_LOAD_ERROR', 'Nenhuma conversa anterior encontrada: ' + error.message);
+        return false;
+    }
+}
+
+// Auto-save periódico (a cada 30 segundos)
+setInterval(async () => {
+    await saveFunnelsToFile();
+    await saveConversationsToFile();
+}, 30000);
 
 // Inicializar funis padrão
 Object.values(defaultFunnels).forEach(funnel => {
@@ -694,6 +803,9 @@ app.post('/api/funnels', (req, res) => {
     funis.set(funnel.id, funnel);
     addLog('FUNNEL_SAVED', 'Funil salvo: ' + funnel.id);
     
+    // Salvar imediatamente no arquivo
+    saveFunnelsToFile();
+    
     res.json({ 
         success: true, 
         message: 'Funil salvo com sucesso',
@@ -715,6 +827,10 @@ app.delete('/api/funnels/:id', (req, res) => {
     if (funis.has(id)) {
         funis.delete(id);
         addLog('FUNNEL_DELETED', 'Funil excluído: ' + id);
+        
+        // Salvar imediatamente no arquivo
+        saveFunnelsToFile();
+        
         res.json({ success: true, message: 'Funil excluído com sucesso' });
     } else {
         res.status(404).json({ success: false, error: 'Funil não encontrado' });
