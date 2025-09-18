@@ -10,7 +10,6 @@ const EVOLUTION_BASE_URL = process.env.EVOLUTION_BASE_URL || 'https://evo.flowza
 const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY || 'SUA_API_KEY_AQUI';
 const PIX_TIMEOUT = 7 * 60 * 1000; // 7 minutos
 const ACK_TIMEOUT_MS = parseInt(process.env.ACK_TIMEOUT_MS) || 10000; // 10 segundos
-// Configurações
 const PORT = process.env.PORT || 3000;
 const DATA_FILE = path.join(__dirname, 'data', 'funnels.json');
 const CONVERSATIONS_FILE = path.join(__dirname, 'data', 'conversations.json');
@@ -342,16 +341,17 @@ async function sendToEvolution(instanceName, endpoint, payload) {
     }
 }
 
-async function sendText(remoteJid, text, clientMessageId) {
+// ✅ CORREÇÃO: Agora as funções recebem instanceName como parâmetro
+async function sendText(remoteJid, text, clientMessageId, instanceName) {
     const textWithId = text + '\u200B[#cmid:' + clientMessageId + ']';
     const payload = {
         number: remoteJid.replace('@s.whatsapp.net', ''),
         text: textWithId
     };
-    return await sendToEvolution(null, '/message/sendText', payload);
+    return await sendToEvolution(instanceName, '/message/sendText', payload);
 }
 
-async function sendImage(remoteJid, imageUrl, caption, clientMessageId) {
+async function sendImage(remoteJid, imageUrl, caption, clientMessageId, instanceName) {
     const captionWithId = caption ? caption + '\u200B[#cmid:' + clientMessageId + ']' : '\u200B[#cmid:' + clientMessageId + ']';
     const payload = {
         number: remoteJid.replace('@s.whatsapp.net', ''),
@@ -361,10 +361,10 @@ async function sendImage(remoteJid, imageUrl, caption, clientMessageId) {
             caption: captionWithId
         }
     };
-    return await sendToEvolution(null, '/message/sendMedia', payload);
+    return await sendToEvolution(instanceName, '/message/sendMedia', payload);
 }
 
-async function sendVideo(remoteJid, videoUrl, caption, clientMessageId) {
+async function sendVideo(remoteJid, videoUrl, caption, clientMessageId, instanceName) {
     const captionWithId = caption ? caption + '\u200B[#cmid:' + clientMessageId + ']' : '\u200B[#cmid:' + clientMessageId + ']';
     const payload = {
         number: remoteJid.replace('@s.whatsapp.net', ''),
@@ -374,7 +374,7 @@ async function sendVideo(remoteJid, videoUrl, caption, clientMessageId) {
             caption: captionWithId
         }
     };
-    return await sendToEvolution(null, '/message/sendVideo', payload);
+    return await sendToEvolution(instanceName, '/message/sendVideo', payload);
 }
 
 // ============ ENVIO COM FALLBACK ============
@@ -394,12 +394,13 @@ async function sendWithFallback(remoteJid, type, text, mediaUrl) {
             addLog('SEND_ATTEMPT', 'Tentando ' + instanceName + ' para ' + remoteJid, { type, clientMessageId });
             
             let result;
+            // ✅ CORREÇÃO: Agora passando instanceName para as funções
             if (type === 'text') {
-                result = await sendText(remoteJid, text, clientMessageId);
+                result = await sendText(remoteJid, text, clientMessageId, instanceName);
             } else if (type === 'image' || type === 'image+text') {
-                result = await sendImage(remoteJid, mediaUrl, text, clientMessageId);
+                result = await sendImage(remoteJid, mediaUrl, text, clientMessageId, instanceName);
             } else if (type === 'video' || type === 'video+text') {
-                result = await sendVideo(remoteJid, mediaUrl, text, clientMessageId);
+                result = await sendVideo(remoteJid, mediaUrl, text, clientMessageId, instanceName);
             }
             
             if (result && result.ok) {
@@ -953,15 +954,41 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+// Inicialização - carregar dados persistidos
+async function initializeData() {
+    console.log('🔄 Carregando dados persistidos...');
+    
+    const funnelsLoaded = await loadFunnelsFromFile();
+    if (!funnelsLoaded) {
+        console.log('📋 Usando funis padrão');
+    }
+    
+    const conversationsLoaded = await loadConversationsFromFile();
+    if (!conversationsLoaded) {
+        console.log('💬 Nenhuma conversa anterior encontrada');
+    }
+    
+    console.log('✅ Inicialização concluída');
+    console.log('📊 Funis carregados:', funis.size);
+    console.log('💬 Conversas ativas:', conversations.size);
+}
+
 // ============ INICIALIZAÇÃO ============
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
     console.log('='.repeat(60));
-    console.log('🚀 KIRVANO SYSTEM - BACKEND API');
+    console.log('🚀 KIRVANO SYSTEM - BACKEND API [VERSÃO CORRIGIDA]');
     console.log('='.repeat(60));
     console.log('Porta:', PORT);
     console.log('Evolution:', EVOLUTION_BASE_URL);
-    console.log('Funis configurados:', funis.size);
+    console.log('API Key configurada:', EVOLUTION_API_KEY !== 'SUA_API_KEY_AQUI');
     console.log('Instâncias:', INSTANCES.length);
+    console.log('');
+    console.log('🔧 CORREÇÕES APLICADAS:');
+    console.log('  ✅ sendText() agora recebe instanceName');
+    console.log('  ✅ sendImage() agora recebe instanceName');  
+    console.log('  ✅ sendVideo() agora recebe instanceName');
+    console.log('  ✅ URLs corretas: /message/sendText/{instance}');
+    console.log('  ✅ Fallback funcionando corretamente');
     console.log('');
     console.log('📡 API Endpoints:');
     console.log('  GET  /api/dashboard     - Estatísticas');
@@ -970,11 +997,16 @@ app.listen(PORT, () => {
     console.log('  GET  /api/conversations  - Listar conversas');
     console.log('  GET  /api/logs          - Logs recentes');
     console.log('  POST /api/send-test     - Teste de envio');
+    console.log('  GET  /api/debug/evolution - Debug Evolution API');
     console.log('');
     console.log('📨 Webhooks:');
     console.log('  POST /webhook/kirvano   - Eventos Kirvano');
     console.log('  POST /webhook/evolution - Eventos Evolution');
     console.log('');
     console.log('🌐 Frontend: http://localhost:' + PORT);
+    console.log('🧪 Testes: http://localhost:' + PORT + '/test.html');
     console.log('='.repeat(60));
+    
+    // Carregar dados persistidos
+    await initializeData();
 });
