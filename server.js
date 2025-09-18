@@ -902,6 +902,52 @@ app.post('/api/send-test', async (req, res) => {
     }
 });
 
+// Debug da Evolution API
+app.get('/api/debug/evolution', async (req, res) => {
+    const debugInfo = {
+        evolution_base_url: EVOLUTION_BASE_URL,
+        evolution_api_key_configured: EVOLUTION_API_KEY !== 'SUA_API_KEY_AQUI',
+        evolution_api_key_length: EVOLUTION_API_KEY.length,
+        instances: INSTANCES,
+        test_results: []
+    };
+    
+    // Testar conexão com primeiro endpoint
+    try {
+        const testInstance = INSTANCES[0];
+        const url = EVOLUTION_BASE_URL + '/message/sendText/' + testInstance;
+        
+        const response = await axios.post(url, {
+            number: '5511999999999',
+            text: 'teste'
+        }, {
+            headers: {
+                'Content-Type': 'application/json',
+                'apikey': EVOLUTION_API_KEY
+            },
+            timeout: 10000,
+            validateStatus: () => true // Aceitar qualquer status para debug
+        });
+        
+        debugInfo.test_results.push({
+            instance: testInstance,
+            url: url,
+            status: response.status,
+            response: response.data,
+            headers: response.headers
+        });
+        
+    } catch (error) {
+        debugInfo.test_results.push({
+            instance: INSTANCES[0],
+            error: error.message,
+            code: error.code
+        });
+    }
+    
+    res.json(debugInfo);
+});
+
 // ============ SERVIR FRONTEND ============
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
