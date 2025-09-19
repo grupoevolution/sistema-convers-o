@@ -31,6 +31,7 @@ let stickyInstances = new Map();
 let pixTimeouts = new Map();
 let logs = [];
 let funis = new Map();
+let instanceRoundRobin = 0; // ✅ Contador para distribuição circular de primeira mensagem
 
 // ✅ FUNIS PADRÃO CORRIGIDOS - waitForReply false nos passos que devem continuar automaticamente
 const defaultFunnels = {
@@ -479,45 +480,78 @@ async function sendAudio(remoteJid, audioUrl, clientMessageId, instanceName) {
     return await sendToEvolution(instanceName, '/message/sendMedia', payload);
 }
 
-// ============ ENVIO COM FALLBACK ============
-async function sendWithFallback(remoteJid, type, text, mediaUrl) {
+// ============ ENVIO COM FALLBACK E ROUND-ROBIN ============
+async function sendWithFallback(remoteJid, type, text, mediaUrl, isFirstMessage = false) {
     const clientMessageId = uuidv4();
-    const stickyInstance = stickyInstances.get(remoteJid);
     let instancesToTry = [...INSTANCES];
     
-    if (stickyInstance) {
-        instancesToTry = [stickyInstance, ...INSTANCES.filter(i => i !== stickyInstance)];
+    // ✅ NOVA LÓGICA: Round-robin para primeira mensagem
+    if (isFirstMessage) {
+        const primaryInstanceIndex = instanceRoundRobin % INSTANCES.length;
+        const primaryInstance = INSTANCES[primaryInstanceIndex];
+        instanceRoundRobin++;
+        
+        // Organizar instâncias em ordem de prioridade para fallback
+        instancesToTry = [
+            primaryInstance,
+            ...INSTANCES.slice(primaryInstanceIndex + 1),
+            ...INSTANCES.slice(0, primaryInstanceIndex)
+        ];
+        
+        addLog('INSTANCE_DISTRIBUTION', `Nova conversa #${instanceRoundRobin} distribuída para ${primaryInstance}`, { 
+            remoteJid,
+            primaryInstance,
+            fallbackOrder: instancesToTry 
+        });
+    } else {
+        // ✅ Manter lógica existente para mensagens subsequentes
+        const stickyInstance = stickyInstances.get(remoteJid);
+        if (stickyInstance) {
+            instancesToTry = [stickyInstance, ...INSTANCES.filter(i => i !== stickyInstance)];
+        }
     }
     
     let lastError = null;
     
     for (const instanceName of instancesToTry) {
         try {
-            addLog('SEND_ATTEMPT', 'Tentando ' + instanceName + ' para ' + remoteJid, { type, clientMessageId });
+            addLog('SEND_ATTEMPT', 'Tentando ' + instanceName + ' para ' + remoteJid, { 
+                type, 
+                clientMessageId,
+                isFirstMessage 
+            });
             
-        // ✅ CORREÇÃO: Tipos corrigidos para suportar vídeo e áudio
-        if (type === 'text') {
-            result = await sendText(remoteJid, text, clientMessageId, instanceName);
-        } else if (type === 'image') {
-            result = await sendImage(remoteJid, mediaUrl, '', clientMessageId, instanceName);
-        } else if (type === 'image+text') {
-            result = await sendImage(remoteJid, mediaUrl, text, clientMessageId, instanceName);
-        } else if (type === 'video') {
-            result = await sendVideo(remoteJid, mediaUrl, '', clientMessageId, instanceName);
-        } else if (type === 'video+text') {
-            result = await sendVideo(remoteJid, mediaUrl, text, clientMessageId, instanceName);
-        } else if (type === 'audio') {
-            result = await sendAudio(remoteJid, mediaUrl, clientMessageId, instanceName);
-        }
+            let result;
+            
+            // ✅ CORREÇÃO: Tipos corrigidos para suportar vídeo e áudio
+            if (type === 'text') {
+                result = await sendText(remoteJid, text, clientMessageId, instanceName);
+            } else if (type === 'image') {
+                result = await sendImage(remoteJid, mediaUrl, '', clientMessageId, instanceName);
+            } else if (type === 'image+text') {
+                result = await sendImage(remoteJid, mediaUrl, text, clientMessageId, instanceName);
+            } else if (type === 'video') {
+                result = await sendVideo(remoteJid, mediaUrl, '', clientMessageId, instanceName);
+            } else if (type === 'video+text') {
+                result = await sendVideo(remoteJid, mediaUrl, text, clientMessageId, instanceName);
+            } else if (type === 'audio') {
+                result = await sendAudio(remoteJid, mediaUrl, clientMessageId, instanceName);
+            }
             
             if (result && result.ok) {
+                // ✅ Atualizar sticky instance apenas para primeira mensagem ou sucesso
                 stickyInstances.set(remoteJid, instanceName);
-                // ✅ CORREÇÃO 2: Remover sistema de ACK que sempre dava timeout
-                addLog('SEND_SUCCESS', 'Mensagem enviada com sucesso via ' + instanceName, { remoteJid, type });
+                
+                addLog('SEND_SUCCESS', 'Mensagem enviada com sucesso via ' + instanceName, { 
+                    remoteJid, 
+                    type,
+                    isFirstMessage,
+                    distributionNumber: isFirstMessage ? instanceRoundRobin : null
+                });
+                
                 return { success: true, instanceName };
             } else {
                 lastError = result.error;
-                // ✅ CORREÇÃO 4: Melhorar logs de erro
                 addLog('SEND_FAILED', instanceName + ' falhou: ' + JSON.stringify(lastError), { remoteJid, type });
             }
         } catch (error) {
@@ -561,13 +595,19 @@ async function sendStep(remoteJid) {
     const step = funnel.steps[conversation.stepIndex];
     if (!step) return;
     
+    // ✅ NOVA LÓGICA: Detectar primeira mensagem
+    const isFirstMessage = conversation.stepIndex === 0;
+    
     const idempotencyKey = 'SEND:' + remoteJid + ':' + conversation.funnelId + ':' + conversation.stepIndex;
     if (checkIdempotency(idempotencyKey)) {
         addLog('STEP_DUPLICATE', 'Passo duplicado ignorado: ' + conversation.funnelId + '[' + conversation.stepIndex + ']');
         return;
     }
     
-    addLog('STEP_SEND', 'Enviando passo ' + conversation.stepIndex + ' do funil ' + conversation.funnelId, { step });
+    addLog('STEP_SEND', 'Enviando passo ' + conversation.stepIndex + ' do funil ' + conversation.funnelId, { 
+        step,
+        isFirstMessage 
+    });
     
     // DELAY ANTES (se configurado)
     if (step.delayBefore && step.delayBefore > 0) {
@@ -595,32 +635,16 @@ async function sendStep(remoteJid) {
         addLog('STEP_TYPING', 'Mostrando digitando por ' + typingSeconds + 's no passo ' + conversation.stepIndex);
         await sendTypingIndicator(remoteJid, typingSeconds);
         
-    } else if (step.type === 'wait_reply') {
-        // Passo de aguardar resposta (gatilho)
-        addLog('STEP_WAIT_REPLY', 'Aguardando resposta do cliente no passo ' + conversation.stepIndex);
-        conversation.waiting_for_response = true;
-        
-        // Configurar timeout se especificado
-        if (step.timeoutMinutes) {
-            setTimeout(() => {
-                handleStepTimeout(remoteJid, conversation.stepIndex);
-            }, step.timeoutMinutes * 60 * 1000);
-        }
-        
-        // Para passos de aguardar resposta, não continuar automaticamente
-        conversations.set(remoteJid, conversation);
-        return;
-        
     } else {
-        // Passo de mensagem (texto, imagem, vídeo)
-        result = await sendWithFallback(remoteJid, step.type, step.text, step.mediaUrl);
+        // ✅ ENVIO COM ROUND-ROBIN PARA PRIMEIRA MENSAGEM
+        result = await sendWithFallback(remoteJid, step.type, step.text, step.mediaUrl, isFirstMessage);
     }
     
     if (result.success) {
         conversation.lastSystemMessage = new Date();
         
         // ✅ CORREÇÃO CRÍTICA: Verificar waitForReply corretamente
-        if (step.waitForReply && step.type !== 'delay' && step.type !== 'typing' && step.type !== 'wait_reply') {
+        if (step.waitForReply && step.type !== 'delay' && step.type !== 'typing') {
             // Aguardar resposta em mensagens normais
             conversation.waiting_for_response = true;
             addLog('STEP_WAITING_REPLY', 'Passo ' + conversation.stepIndex + ' aguardando resposta do cliente', { 
@@ -935,14 +959,35 @@ app.post('/webhook/evolution', async (req, res) => {
 
 // ============ API ENDPOINTS ============
 
-// Dashboard - estatísticas principais
+// Dashboard - estatísticas principais com distribuição de instâncias
 app.get('/api/dashboard', (req, res) => {
+    // Contar uso por instância
+    const instanceUsage = {};
+    INSTANCES.forEach(inst => {
+        instanceUsage[inst] = 0;
+    });
+    
+    // Contar quantas conversas estão fixadas em cada instância
+    stickyInstances.forEach((instance) => {
+        if (instanceUsage[instance] !== undefined) {
+            instanceUsage[instance]++;
+        }
+    });
+    
+    // Calcular próxima instância na fila
+    const nextInstanceIndex = instanceRoundRobin % INSTANCES.length;
+    const nextInstance = INSTANCES[nextInstanceIndex];
+    
     const stats = {
         active_conversations: conversations.size,
         pending_pix: pixTimeouts.size,
         total_funnels: funis.size,
         total_instances: INSTANCES.length,
-        sticky_instances: stickyInstances.size
+        sticky_instances: stickyInstances.size,
+        round_robin_counter: instanceRoundRobin,
+        next_instance_in_queue: nextInstance,
+        instance_distribution: instanceUsage,
+        conversations_per_instance: Math.round(conversations.size / INSTANCES.length)
     };
     
     res.json({
@@ -1091,6 +1136,7 @@ app.get('/api/debug/evolution', async (req, res) => {
         instances: INSTANCES,
         active_conversations: conversations.size,
         sticky_instances_count: stickyInstances.size,
+        round_robin_counter: instanceRoundRobin,
         test_results: []
     };
     
@@ -1157,34 +1203,30 @@ async function initializeData() {
 // ============ INICIALIZAÇÃO ============
 app.listen(PORT, async () => {
     console.log('='.repeat(60));
-    console.log('🚀 KIRVANO SYSTEM - BACKEND API [VERSÃO TOTALMENTE CORRIGIDA]');
+    console.log('🚀 KIRVANO SYSTEM - BACKEND API [VERSÃO COM ROUND-ROBIN]');
     console.log('='.repeat(60));
     console.log('Porta:', PORT);
     console.log('Evolution:', EVOLUTION_BASE_URL);
     console.log('API Key configurada:', EVOLUTION_API_KEY !== 'SUA_API_KEY_AQUI');
     console.log('Instâncias:', INSTANCES.length);
     console.log('');
-    console.log('🔧 TODAS AS CORREÇÕES APLICADAS + CORREÇÃO CRÍTICA:');
-    console.log('  ✅ 1. Códigos ID removidos das mensagens');
-    console.log('  ✅ 2. Sistema de ACK removido (não mais timeout)');  
-    console.log('  ✅ 3. Logs detalhados do webhook Evolution');
-    console.log('  ✅ 4. Logs de erro melhorados (JSON stringify)');
-    console.log('  ✅ 5. Endpoint de vídeo corrigido (/sendMedia)');
-    console.log('  ✅ 6. Limpeza: funções e variáveis ACK removidas');
-    console.log('  ✅ 7. CRÍTICA: Lógica waitForReply corrigida');
-    console.log('  ✅ 8. CRÍTICA: Logs detalhados em advanceConversation');
-    console.log('  ✅ 9. CRÍTICA: Funis padrão com waitForReply correto');
-    console.log('  ✅ 10. CRÍTICA: Normalização robusta de telefones');
-    console.log('  ✅ 11. CRÍTICA: Busca flexível de conversas por telefone');
+    console.log('🔧 MODIFICAÇÕES APLICADAS:');
+    console.log('  ✅ 1. Round-robin para primeiras mensagens');
+    console.log('  ✅ 2. Detecção automática de primeira mensagem');
+    console.log('  ✅ 3. Distribuição inteligente entre instâncias');
+    console.log('  ✅ 4. Fallback mantido para mensagens subsequentes');
+    console.log('  ✅ 5. Logs detalhados de distribuição');
+    console.log('  ✅ 6. Contador round-robin no dashboard');
+    console.log('  ✅ 7. Remoção do bloco wait_reply');
     console.log('');
     console.log('🎯 RESULTADO ESPERADO:');
-    console.log('  • Mensagens limpas (sem códigos visíveis)');
-    console.log('  • Funil continua automaticamente');
-    console.log('  • Fallback entre instâncias funcionando');
-    console.log('  • Respostas dos clientes detectadas');
+    console.log('  • Distribuição equilibrada de conversas');
+    console.log('  • Sticky instance para mensagens subsequentes');
+    console.log('  • Fallback automático em caso de falha');
+    console.log('  • Logs de distribuição detalhados');
     console.log('');
     console.log('📡 API Endpoints:');
-    console.log('  GET  /api/dashboard     - Estatísticas');
+    console.log('  GET  /api/dashboard     - Estatísticas + Round-robin');
     console.log('  GET  /api/funnels       - Listar funis');
     console.log('  POST /api/funnels       - Criar/editar funil');
     console.log('  GET  /api/conversations  - Listar conversas');
