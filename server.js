@@ -261,19 +261,121 @@ app.use(express.static('public')); // Serve arquivos estáticos da pasta public
 // ============ FUNÇÕES AUXILIARES ============
 function normalizePhone(phone) {
     if (!phone) return '';
+    
+    // Remove todos os caracteres não numéricos
     let cleaned = phone.replace(/\D/g, '');
-    if (cleaned.length === 10 || cleaned.length === 11) {
-        cleaned = '55' + cleaned;
+    
+    // Se começar com +55, remove o +
+    if (cleaned.startsWith('55')) {
+        cleaned = cleaned.substring(2);
     }
-    if (!cleaned.startsWith('55')) {
-        cleaned = '55' + cleaned;
+    
+    // ✅ NORMALIZAÇÃO ROBUSTA PARA NÚMEROS BRASILEIROS
+    
+    // Se tem 10 dígitos (DDD + 8 dígitos), adicionar 9
+    if (cleaned.length === 10) {
+        const ddd = cleaned.substring(0, 2);
+        const numero = cleaned.substring(2);
+        cleaned = ddd + '9' + numero; // Adiciona o 9
     }
+    
+    // Se tem 11 dígitos mas não tem 9 após o DDD, adicionar
+    if (cleaned.length === 11) {
+        const ddd = cleaned.substring(0, 2);
+        const primeiroDigito = cleaned.substring(2, 3);
+        
+        // Se o primeiro dígito após DDD não é 9, adicionar 9
+        if (primeiroDigito !== '9') {
+            const numero = cleaned.substring(2);
+            cleaned = ddd + '9' + numero;
+        }
+    }
+    
+    // Garantir que tem exatamente 11 dígitos no final
+    if (cleaned.length === 11) {
+        cleaned = '55' + cleaned; // Adicionar código do país
+    } else if (cleaned.length === 13 && cleaned.startsWith('55')) {
+        // Já tem 55 + 11 dígitos, está correto
+    } else {
+        // Formato não reconhecido, tentar com código do país
+        if (!cleaned.startsWith('55')) {
+            cleaned = '55' + cleaned;
+        }
+    }
+    
+    addLog('PHONE_NORMALIZE', 'Número normalizado', { 
+        input: phone, 
+        output: cleaned,
+        length: cleaned.length
+    });
+    
     return cleaned;
 }
 
 function phoneToRemoteJid(phone) {
     const normalized = normalizePhone(phone);
     return normalized + '@s.whatsapp.net';
+}
+
+// ✅ NOVA FUNÇÃO: Criar múltiplas variações do número para busca
+function findConversationByPhone(phone) {
+    const normalized = normalizePhone(phone);
+    const remoteJid = normalized + '@s.whatsapp.net';
+    
+    // Tentar encontrar conversa com número exato
+    if (conversations.has(remoteJid)) {
+        addLog('CONVERSATION_FOUND_EXACT', 'Conversa encontrada com número exato', { remoteJid });
+        return conversations.get(remoteJid);
+    }
+    
+    // ✅ BUSCA FLEXÍVEL: Criar variações do número
+    const phoneOnly = normalized.replace('55', ''); // Remove código do país
+    const variations = [
+        normalized + '@s.whatsapp.net',                    // 5575981734444@s.whatsapp.net
+        '55' + phoneOnly + '@s.whatsapp.net',             // Com código país
+        phoneOnly + '@s.whatsapp.net',                    // Sem código país: 75981734444@s.whatsapp.net
+    ];
+    
+    // Se tem 11 dígitos, criar variação sem 9
+    if (phoneOnly.length === 11 && phoneOnly.charAt(2) === '9') {
+        const ddd = phoneOnly.substring(0, 2);
+        const numeroSem9 = phoneOnly.substring(3);
+        variations.push(ddd + numeroSem9 + '@s.whatsapp.net');           // 7581734444@s.whatsapp.net
+        variations.push('55' + ddd + numeroSem9 + '@s.whatsapp.net');   // 557581734444@s.whatsapp.net
+    }
+    
+    // Buscar em todas as variações
+    for (const variation of variations) {
+        if (conversations.has(variation)) {
+            addLog('CONVERSATION_FOUND_VARIATION', 'Conversa encontrada com variação', { 
+                searched: remoteJid,
+                found: variation,
+                variations: variations
+            });
+            
+            // ✅ IMPORTANTE: Atualizar a chave da conversa para o formato normalizado
+            const conversation = conversations.get(variation);
+            conversations.delete(variation); // Remove entrada antiga
+            conversations.set(remoteJid, conversation); // Adiciona com chave normalizada
+            
+            // Atualizar sticky instance também
+            if (stickyInstances.has(variation)) {
+                const instance = stickyInstances.get(variation);
+                stickyInstances.delete(variation);
+                stickyInstances.set(remoteJid, instance);
+            }
+            
+            return conversation;
+        }
+    }
+    
+    addLog('CONVERSATION_NOT_FOUND', 'Nenhuma conversa encontrada', { 
+        searched: remoteJid,
+        variations: variations,
+        existingConversations: Array.from(conversations.keys())
+    });
+    
+    return null;
 }
 
 function extractMessageText(message) {
@@ -779,26 +881,36 @@ app.post('/webhook/evolution', async (req, res) => {
             addLog('WEBHOOK_FROM_ME', 'Mensagem enviada por nós ignorada', { remoteJid });
             return res.json({ success: true });
         } else {
-            const conversation = conversations.get(remoteJid);
+            const incomingPhone = messageData.key.remoteJid.replace('@s.whatsapp.net', '');
+            
+            // ✅ CORREÇÃO: Usar busca flexível por telefone
+            const conversation = findConversationByPhone(incomingPhone);
             
             if (conversation && conversation.waiting_for_response) {
-                const idempotencyKey = 'REPLY:' + remoteJid + ':' + conversation.funnelId + ':' + conversation.stepIndex;
+                const normalizedRemoteJid = normalizePhone(incomingPhone) + '@s.whatsapp.net';
+                
+                const idempotencyKey = 'REPLY:' + normalizedRemoteJid + ':' + conversation.funnelId + ':' + conversation.stepIndex;
                 if (checkIdempotency(idempotencyKey)) {
-                    addLog('WEBHOOK_DUPLICATE_REPLY', 'Resposta duplicada ignorada', { remoteJid });
+                    addLog('WEBHOOK_DUPLICATE_REPLY', 'Resposta duplicada ignorada', { remoteJid: normalizedRemoteJid });
                     return res.json({ success: true, message: 'Resposta duplicada' });
                 }
                 
-                addLog('CLIENT_REPLY', 'Resposta recebida de ' + remoteJid, { 
+                addLog('CLIENT_REPLY', 'Resposta recebida e processada', { 
+                    originalRemoteJid: remoteJid,
+                    normalizedRemoteJid: normalizedRemoteJid,
                     text: messageText.substring(0, 100),
                     step: conversation.stepIndex,
                     funnelId: conversation.funnelId
                 });
                 
-                await advanceConversation(remoteJid, messageText, 'reply');
+                await advanceConversation(normalizedRemoteJid, messageText, 'reply');
             } else {
                 addLog('WEBHOOK_NO_CONVERSATION', 'Mensagem recebida mas sem conversa ativa', { 
                     remoteJid, 
-                    messageText: messageText.substring(0, 50)
+                    incomingPhone,
+                    normalizedPhone: normalizePhone(incomingPhone),
+                    messageText: messageText.substring(0, 50),
+                    existingConversations: Array.from(conversations.keys()).slice(0, 3)
                 });
             }
         }
@@ -1052,6 +1164,8 @@ app.listen(PORT, async () => {
     console.log('  ✅ 7. CRÍTICA: Lógica waitForReply corrigida');
     console.log('  ✅ 8. CRÍTICA: Logs detalhados em advanceConversation');
     console.log('  ✅ 9. CRÍTICA: Funis padrão com waitForReply correto');
+    console.log('  ✅ 10. CRÍTICA: Normalização robusta de telefones');
+    console.log('  ✅ 11. CRÍTICA: Busca flexível de conversas por telefone');
     console.log('');
     console.log('🎯 RESULTADO ESPERADO:');
     console.log('  • Mensagens limpas (sem códigos visíveis)');
