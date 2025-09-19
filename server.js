@@ -441,11 +441,11 @@ async function sendToEvolution(instanceName, endpoint, payload) {
     }
 }
 
-// ✅ CORREÇÃO 1: Remover códigos ID das mensagens
+// ✅ CORREÇÃO: Funções de envio com formato correto para Evolution API
 async function sendText(remoteJid, text, clientMessageId, instanceName) {
     const payload = {
         number: remoteJid.replace('@s.whatsapp.net', ''),
-        text: text  // ✅ SEM adicionar código ID
+        text: text
     };
     return await sendToEvolution(instanceName, '/message/sendText', payload);
 }
@@ -453,11 +453,9 @@ async function sendText(remoteJid, text, clientMessageId, instanceName) {
 async function sendImage(remoteJid, imageUrl, caption, clientMessageId, instanceName) {
     const payload = {
         number: remoteJid.replace('@s.whatsapp.net', ''),
-        mediaMessage: {
-            mediatype: 'image',
-            media: imageUrl,
-            caption: caption || ''  // ✅ SEM adicionar código ID
-        }
+        mediatype: 'image',
+        media: imageUrl,
+        caption: caption || ''
     };
     return await sendToEvolution(instanceName, '/message/sendMedia', payload);
 }
@@ -465,13 +463,19 @@ async function sendImage(remoteJid, imageUrl, caption, clientMessageId, instance
 async function sendVideo(remoteJid, videoUrl, caption, clientMessageId, instanceName) {
     const payload = {
         number: remoteJid.replace('@s.whatsapp.net', ''),
-        mediaMessage: {
-            mediatype: 'video',
-            media: videoUrl,
-            caption: caption || ''  // ✅ SEM adicionar código ID
-        }
+        mediatype: 'video',
+        media: videoUrl,
+        caption: caption || ''
     };
-    // ✅ CORREÇÃO 5: Usar endpoint correto para vídeo
+    return await sendToEvolution(instanceName, '/message/sendMedia', payload);
+}
+
+async function sendAudio(remoteJid, audioUrl, clientMessageId, instanceName) {
+    const payload = {
+        number: remoteJid.replace('@s.whatsapp.net', ''),
+        mediatype: 'audio',
+        media: audioUrl
+    };
     return await sendToEvolution(instanceName, '/message/sendMedia', payload);
 }
 
@@ -491,14 +495,20 @@ async function sendWithFallback(remoteJid, type, text, mediaUrl) {
         try {
             addLog('SEND_ATTEMPT', 'Tentando ' + instanceName + ' para ' + remoteJid, { type, clientMessageId });
             
-            let result;
-            if (type === 'text') {
-                result = await sendText(remoteJid, text, clientMessageId, instanceName);
-            } else if (type === 'image' || type === 'image+text') {
-                result = await sendImage(remoteJid, mediaUrl, text, clientMessageId, instanceName);
-            } else if (type === 'video' || type === 'video+text') {
-                result = await sendVideo(remoteJid, mediaUrl, text, clientMessageId, instanceName);
-            }
+        // ✅ CORREÇÃO: Tipos corrigidos para suportar vídeo e áudio
+        if (type === 'text') {
+            result = await sendText(remoteJid, text, clientMessageId, instanceName);
+        } else if (type === 'image') {
+            result = await sendImage(remoteJid, mediaUrl, '', clientMessageId, instanceName);
+        } else if (type === 'image+text') {
+            result = await sendImage(remoteJid, mediaUrl, text, clientMessageId, instanceName);
+        } else if (type === 'video') {
+            result = await sendVideo(remoteJid, mediaUrl, '', clientMessageId, instanceName);
+        } else if (type === 'video+text') {
+            result = await sendVideo(remoteJid, mediaUrl, text, clientMessageId, instanceName);
+        } else if (type === 'audio') {
+            result = await sendAudio(remoteJid, mediaUrl, clientMessageId, instanceName);
+        }
             
             if (result && result.ok) {
                 stickyInstances.set(remoteJid, instanceName);
