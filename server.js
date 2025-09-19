@@ -9,7 +9,6 @@ const app = express();
 const EVOLUTION_BASE_URL = process.env.EVOLUTION_BASE_URL || 'https://evo.flowzap.fun';
 const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY || 'SUA_API_KEY_AQUI';
 const PIX_TIMEOUT = 7 * 60 * 1000; // 7 minutos
-const ACK_TIMEOUT_MS = parseInt(process.env.ACK_TIMEOUT_MS) || 10000; // 10 segundos
 const PORT = process.env.PORT || 3000;
 const DATA_FILE = path.join(__dirname, 'data', 'funnels.json');
 const CONVERSATIONS_FILE = path.join(__dirname, 'data', 'conversations.json');
@@ -27,14 +26,13 @@ const INSTANCES = ['GABY01', 'GABY02', 'GABY03', 'GABY04', 'GABY05', 'GABY06', '
 
 // ============ ARMAZENAMENTO EM MEMÓRIA ============
 let conversations = new Map();
-let pendingAcks = new Map();
 let idempotencyCache = new Map();
 let stickyInstances = new Map();
 let pixTimeouts = new Map();
 let logs = [];
 let funis = new Map();
 
-// ============ FUNIS PADRÃO ============
+// ✅ FUNIS PADRÃO CORRIGIDOS - waitForReply false nos passos que devem continuar automaticamente
 const defaultFunnels = {
     'CS_APROVADA': {
         id: 'CS_APROVADA',
@@ -53,13 +51,13 @@ const defaultFunnels = {
                 id: 'step_2',
                 type: 'text',
                 text: 'Obrigado pela resposta! Aqui estão seus próximos passos...',
-                waitForReply: false
+                waitForReply: false  // ✅ CORREÇÃO: false para continuar automaticamente
             },
             {
                 id: 'step_3',
                 type: 'text',
                 text: 'Lembre-se de acessar nossa plataforma. Qualquer dúvida, estamos aqui!',
-                waitForReply: false
+                waitForReply: false  // ✅ CORREÇÃO: false para continuar automaticamente
             }
         ]
     },
@@ -80,13 +78,13 @@ const defaultFunnels = {
                 id: 'step_2',
                 type: 'text',
                 text: 'Obrigado pelo contato! Assim que o pagamento for confirmado, você receberá o acesso.',
-                waitForReply: false
+                waitForReply: false  // ✅ CORREÇÃO: false para continuar automaticamente
             },
             {
                 id: 'step_3',
                 type: 'text',
                 text: 'PIX vencido! Entre em contato conosco para gerar um novo.',
-                waitForReply: false
+                waitForReply: false  // ✅ CORREÇÃO: false para continuar automaticamente
             }
         ]
     },
@@ -107,13 +105,13 @@ const defaultFunnels = {
                 id: 'step_2',
                 type: 'text',
                 text: 'Que bom que respondeu! Sua jornada FAB começa agora...',
-                waitForReply: false
+                waitForReply: false  // ✅ CORREÇÃO: false para continuar automaticamente
             },
             {
                 id: 'step_3',
                 type: 'text',
                 text: 'Acesse nossa área de membros e comece sua transformação hoje mesmo!',
-                waitForReply: false
+                waitForReply: false  // ✅ CORREÇÃO: false para continuar automaticamente
             }
         ]
     },
@@ -134,13 +132,13 @@ const defaultFunnels = {
                 id: 'step_2',
                 type: 'text',
                 text: 'Obrigado pelo contato! Logo após o pagamento, você terá acesso completo ao FAB.',
-                waitForReply: false
+                waitForReply: false  // ✅ CORREÇÃO: false para continuar automaticamente
             },
             {
                 id: 'step_3',
                 type: 'text',
                 text: 'PIX vencido! Entre em contato para gerar um novo e não perder essa oportunidade.',
-                waitForReply: false
+                waitForReply: false  // ✅ CORREÇÃO: false para continuar automaticamente
             }
         ]
     }
@@ -341,40 +339,38 @@ async function sendToEvolution(instanceName, endpoint, payload) {
     }
 }
 
-// ✅ CORREÇÃO: Agora as funções recebem instanceName como parâmetro
+// ✅ CORREÇÃO 1: Remover códigos ID das mensagens
 async function sendText(remoteJid, text, clientMessageId, instanceName) {
-    const textWithId = text + '\u200B[#cmid:' + clientMessageId + ']';
     const payload = {
         number: remoteJid.replace('@s.whatsapp.net', ''),
-        text: textWithId
+        text: text  // ✅ SEM adicionar código ID
     };
     return await sendToEvolution(instanceName, '/message/sendText', payload);
 }
 
 async function sendImage(remoteJid, imageUrl, caption, clientMessageId, instanceName) {
-    const captionWithId = caption ? caption + '\u200B[#cmid:' + clientMessageId + ']' : '\u200B[#cmid:' + clientMessageId + ']';
     const payload = {
         number: remoteJid.replace('@s.whatsapp.net', ''),
         mediaMessage: {
             mediatype: 'image',
             media: imageUrl,
-            caption: captionWithId
+            caption: caption || ''  // ✅ SEM adicionar código ID
         }
     };
     return await sendToEvolution(instanceName, '/message/sendMedia', payload);
 }
 
 async function sendVideo(remoteJid, videoUrl, caption, clientMessageId, instanceName) {
-    const captionWithId = caption ? caption + '\u200B[#cmid:' + clientMessageId + ']' : '\u200B[#cmid:' + clientMessageId + ']';
     const payload = {
         number: remoteJid.replace('@s.whatsapp.net', ''),
         mediaMessage: {
             mediatype: 'video',
             media: videoUrl,
-            caption: captionWithId
+            caption: caption || ''  // ✅ SEM adicionar código ID
         }
     };
-    return await sendToEvolution(instanceName, '/message/sendVideo', payload);
+    // ✅ CORREÇÃO 5: Usar endpoint correto para vídeo
+    return await sendToEvolution(instanceName, '/message/sendMedia', payload);
 }
 
 // ============ ENVIO COM FALLBACK ============
@@ -394,7 +390,6 @@ async function sendWithFallback(remoteJid, type, text, mediaUrl) {
             addLog('SEND_ATTEMPT', 'Tentando ' + instanceName + ' para ' + remoteJid, { type, clientMessageId });
             
             let result;
-            // ✅ CORREÇÃO: Agora passando instanceName para as funções
             if (type === 'text') {
                 result = await sendText(remoteJid, text, clientMessageId, instanceName);
             } else if (type === 'image' || type === 'image+text') {
@@ -405,10 +400,13 @@ async function sendWithFallback(remoteJid, type, text, mediaUrl) {
             
             if (result && result.ok) {
                 stickyInstances.set(remoteJid, instanceName);
-                return await waitForAck(clientMessageId, remoteJid, instanceName);
+                // ✅ CORREÇÃO 2: Remover sistema de ACK que sempre dava timeout
+                addLog('SEND_SUCCESS', 'Mensagem enviada com sucesso via ' + instanceName, { remoteJid, type });
+                return { success: true, instanceName };
             } else {
                 lastError = result.error;
-                addLog('SEND_FAILED', instanceName + ' falhou: ' + lastError, { remoteJid, type });
+                // ✅ CORREÇÃO 4: Melhorar logs de erro
+                addLog('SEND_FAILED', instanceName + ' falhou: ' + JSON.stringify(lastError), { remoteJid, type });
             }
         } catch (error) {
             lastError = error.message;
@@ -418,28 +416,6 @@ async function sendWithFallback(remoteJid, type, text, mediaUrl) {
     
     addLog('SEND_ALL_FAILED', 'Todas as instâncias falharam para ' + remoteJid, { lastError });
     return { success: false, error: lastError };
-}
-
-async function waitForAck(clientMessageId, remoteJid, instanceName) {
-    return new Promise((resolve) => {
-        const ackData = {
-            clientMessageId,
-            remoteJid,
-            instanceName,
-            timestamp: Date.now(),
-            resolve
-        };
-        
-        pendingAcks.set(clientMessageId, ackData);
-        
-        setTimeout(() => {
-            if (pendingAcks.has(clientMessageId)) {
-                pendingAcks.delete(clientMessageId);
-                addLog('ACK_TIMEOUT', 'Timeout de ACK para ' + clientMessageId, { remoteJid, instanceName });
-                resolve({ success: false, error: 'ACK timeout' });
-            }
-        }, ACK_TIMEOUT_MS);
-    });
 }
 
 // ============ ORQUESTRAÇÃO DE FUNIS ============
@@ -531,28 +507,46 @@ async function sendStep(remoteJid) {
     if (result.success) {
         conversation.lastSystemMessage = new Date();
         
+        // ✅ CORREÇÃO CRÍTICA: Verificar waitForReply corretamente
         if (step.waitForReply && step.type !== 'delay' && step.type !== 'typing' && step.type !== 'wait_reply') {
-            // Aguardar resposta em mensagens normais (funcionalidade antiga mantida)
+            // Aguardar resposta em mensagens normais
             conversation.waiting_for_response = true;
+            addLog('STEP_WAITING_REPLY', 'Passo ' + conversation.stepIndex + ' aguardando resposta do cliente', { 
+                funnelId: conversation.funnelId, 
+                waitForReply: step.waitForReply,
+                stepType: step.type
+            });
             
             if (step.timeoutMinutes) {
                 setTimeout(() => {
                     handleStepTimeout(remoteJid, conversation.stepIndex);
                 }, step.timeoutMinutes * 60 * 1000);
             }
+            
+            // ✅ IMPORTANTE: Salvar estado antes de aguardar resposta
+            conversations.set(remoteJid, conversation);
         } else {
+            // ✅ CORREÇÃO: Avançar automaticamente quando waitForReply é false
+            addLog('STEP_AUTO_ADVANCE', 'Passo ' + conversation.stepIndex + ' avançando automaticamente', { 
+                funnelId: conversation.funnelId, 
+                waitForReply: step.waitForReply,
+                stepType: step.type
+            });
+            
+            // Salvar estado atual antes de avançar
+            conversations.set(remoteJid, conversation);
+            
             // Avançar automaticamente para o próximo passo
             await advanceConversation(remoteJid, null, 'auto');
         }
         
-        conversations.set(remoteJid, conversation);
         addLog('STEP_SUCCESS', 'Passo executado com sucesso: ' + conversation.funnelId + '[' + conversation.stepIndex + ']');
     } else {
         addLog('STEP_FAILED', 'Falha no envio do passo: ' + result.error, { conversation });
     }
 }
 
-// NOVA FUNÇÃO: Enviar indicador de digitação
+// Enviar indicador de digitação
 async function sendTypingIndicator(remoteJid, durationSeconds = 3) {
     const instanceName = stickyInstances.get(remoteJid) || INSTANCES[0];
     
@@ -583,28 +577,65 @@ async function sendTypingIndicator(remoteJid, durationSeconds = 3) {
 
 async function advanceConversation(remoteJid, replyText, reason) {
     const conversation = conversations.get(remoteJid);
-    if (!conversation) return;
+    if (!conversation) {
+        addLog('ADVANCE_ERROR', 'Tentativa de avançar conversa inexistente: ' + remoteJid);
+        return;
+    }
     
     const funnel = funis.get(conversation.funnelId);
-    if (!funnel) return;
+    if (!funnel) {
+        addLog('ADVANCE_ERROR', 'Funil não encontrado: ' + conversation.funnelId, { remoteJid });
+        return;
+    }
     
     const currentStep = funnel.steps[conversation.stepIndex];
-    if (!currentStep) return;
+    if (!currentStep) {
+        addLog('ADVANCE_ERROR', 'Passo atual não encontrado: ' + conversation.stepIndex, { 
+            remoteJid, 
+            funnelId: conversation.funnelId 
+        });
+        return;
+    }
+    
+    // ✅ LOGS DETALHADOS para debug
+    addLog('ADVANCE_START', 'Iniciando avanço da conversa', {
+        remoteJid: remoteJid,
+        currentStep: conversation.stepIndex,
+        funnelId: conversation.funnelId,
+        reason: reason,
+        currentStepType: currentStep.type,
+        waitingForResponse: conversation.waiting_for_response,
+        nextOnReply: currentStep.nextOnReply,
+        nextOnTimeout: currentStep.nextOnTimeout
+    });
     
     let nextStepIndex;
     if (reason === 'reply' && currentStep.nextOnReply !== undefined) {
         nextStepIndex = currentStep.nextOnReply;
+        addLog('ADVANCE_LOGIC', 'Usando nextOnReply: ' + nextStepIndex, { reason, currentStep: conversation.stepIndex });
     } else if (reason === 'timeout' && currentStep.nextOnTimeout !== undefined) {
         nextStepIndex = currentStep.nextOnTimeout;
+        addLog('ADVANCE_LOGIC', 'Usando nextOnTimeout: ' + nextStepIndex, { reason, currentStep: conversation.stepIndex });
     } else {
         nextStepIndex = conversation.stepIndex + 1;
+        addLog('ADVANCE_LOGIC', 'Usando próximo sequencial: ' + nextStepIndex, { reason, currentStep: conversation.stepIndex });
     }
     
     if (nextStepIndex >= funnel.steps.length) {
-        addLog('FUNNEL_END', 'Funil ' + conversation.funnelId + ' concluído para ' + remoteJid);
+        addLog('FUNNEL_END', 'Funil ' + conversation.funnelId + ' concluído para ' + remoteJid, {
+            totalSteps: funnel.steps.length,
+            finalStep: conversation.stepIndex
+        });
+        
+        // ✅ Marcar conversa como finalizada mas manter no registro
+        conversation.waiting_for_response = false;
+        conversation.completed = true;
+        conversation.completedAt = new Date();
+        conversations.set(remoteJid, conversation);
         return;
     }
     
+    // ✅ Atualizar conversa
     conversation.stepIndex = nextStepIndex;
     conversation.waiting_for_response = false;
     if (reason === 'reply') {
@@ -612,7 +643,16 @@ async function advanceConversation(remoteJid, replyText, reason) {
     }
     
     conversations.set(remoteJid, conversation);
-    addLog('STEP_ADVANCE', 'Avançando para passo ' + nextStepIndex + ' (motivo: ' + reason + ')', { conversation });
+    
+    addLog('STEP_ADVANCE', 'Avançando para passo ' + nextStepIndex + ' (motivo: ' + reason + ')', { 
+        remoteJid,
+        funnelId: conversation.funnelId,
+        previousStep: conversation.stepIndex - 1,
+        nextStep: nextStepIndex,
+        reason: reason
+    });
+    
+    // ✅ Enviar próximo passo
     await sendStep(remoteJid);
 }
 
@@ -707,12 +747,19 @@ app.post('/webhook/kirvano', async (req, res) => {
     }
 });
 
+// ✅ CORREÇÃO 3: Adicionar logs detalhados no webhook Evolution
 app.post('/webhook/evolution', async (req, res) => {
+    // ✅ Log completo do webhook recebido
+    console.log('===== WEBHOOK EVOLUTION RECEBIDO =====');
+    console.log(JSON.stringify(req.body, null, 2));
+    addLog('WEBHOOK_RECEIVED', 'Webhook Evolution recebido', req.body);
+    
     try {
         const data = req.body;
         const messageData = data.data;
         
         if (!messageData || !messageData.key) {
+            addLog('WEBHOOK_IGNORED', 'Webhook sem dados de mensagem');
             return res.json({ success: true });
         }
         
@@ -720,33 +767,39 @@ app.post('/webhook/evolution', async (req, res) => {
         const fromMe = messageData.key.fromMe;
         const messageText = extractMessageText(messageData.message);
         
+        addLog('WEBHOOK_DETAILS', 'Processando mensagem', { 
+            remoteJid, 
+            fromMe, 
+            messageText: messageText.substring(0, 100),
+            hasConversation: conversations.has(remoteJid)
+        });
+        
+        // ✅ CORREÇÃO 6: Remover lógica de ACK que não funciona mais
         if (fromMe) {
-            const clientMessageIdMatch = messageText.match(/\[#cmid:([^\]]+)\]/);
-            if (clientMessageIdMatch) {
-                const clientMessageId = clientMessageIdMatch[1];
-                const pendingAck = pendingAcks.get(clientMessageId);
-                
-                if (pendingAck) {
-                    pendingAcks.delete(clientMessageId);
-                    addLog('ACK_RECEIVED', 'ACK confirmado: ' + clientMessageId, { remoteJid });
-                    pendingAck.resolve({ success: true, clientMessageId });
-                }
-            }
+            addLog('WEBHOOK_FROM_ME', 'Mensagem enviada por nós ignorada', { remoteJid });
+            return res.json({ success: true });
         } else {
             const conversation = conversations.get(remoteJid);
             
             if (conversation && conversation.waiting_for_response) {
                 const idempotencyKey = 'REPLY:' + remoteJid + ':' + conversation.funnelId + ':' + conversation.stepIndex;
                 if (checkIdempotency(idempotencyKey)) {
+                    addLog('WEBHOOK_DUPLICATE_REPLY', 'Resposta duplicada ignorada', { remoteJid });
                     return res.json({ success: true, message: 'Resposta duplicada' });
                 }
                 
                 addLog('CLIENT_REPLY', 'Resposta recebida de ' + remoteJid, { 
                     text: messageText.substring(0, 100),
-                    step: conversation.stepIndex 
+                    step: conversation.stepIndex,
+                    funnelId: conversation.funnelId
                 });
                 
                 await advanceConversation(remoteJid, messageText, 'reply');
+            } else {
+                addLog('WEBHOOK_NO_CONVERSATION', 'Mensagem recebida mas sem conversa ativa', { 
+                    remoteJid, 
+                    messageText: messageText.substring(0, 50)
+                });
             }
         }
         
@@ -764,10 +817,10 @@ app.post('/webhook/evolution', async (req, res) => {
 app.get('/api/dashboard', (req, res) => {
     const stats = {
         active_conversations: conversations.size,
-        pending_acks: pendingAcks.size,
         pending_pix: pixTimeouts.size,
         total_funnels: funis.size,
-        total_instances: INSTANCES.length
+        total_instances: INSTANCES.length,
+        sticky_instances: stickyInstances.size
     };
     
     res.json({
@@ -897,7 +950,11 @@ app.post('/api/send-test', async (req, res) => {
     const result = await sendWithFallback(remoteJid, type, text, mediaUrl);
     
     if (result.success) {
-        res.json({ success: true, message: 'Mensagem enviada com sucesso!' });
+        res.json({ 
+            success: true, 
+            message: 'Mensagem enviada com sucesso!',
+            instanceUsed: result.instanceName
+        });
     } else {
         res.status(500).json({ success: false, error: result.error });
     }
@@ -910,6 +967,8 @@ app.get('/api/debug/evolution', async (req, res) => {
         evolution_api_key_configured: EVOLUTION_API_KEY !== 'SUA_API_KEY_AQUI',
         evolution_api_key_length: EVOLUTION_API_KEY.length,
         instances: INSTANCES,
+        active_conversations: conversations.size,
+        sticky_instances_count: stickyInstances.size,
         test_results: []
     };
     
@@ -976,19 +1035,29 @@ async function initializeData() {
 // ============ INICIALIZAÇÃO ============
 app.listen(PORT, async () => {
     console.log('='.repeat(60));
-    console.log('🚀 KIRVANO SYSTEM - BACKEND API [VERSÃO CORRIGIDA]');
+    console.log('🚀 KIRVANO SYSTEM - BACKEND API [VERSÃO TOTALMENTE CORRIGIDA]');
     console.log('='.repeat(60));
     console.log('Porta:', PORT);
     console.log('Evolution:', EVOLUTION_BASE_URL);
     console.log('API Key configurada:', EVOLUTION_API_KEY !== 'SUA_API_KEY_AQUI');
     console.log('Instâncias:', INSTANCES.length);
     console.log('');
-    console.log('🔧 CORREÇÕES APLICADAS:');
-    console.log('  ✅ sendText() agora recebe instanceName');
-    console.log('  ✅ sendImage() agora recebe instanceName');  
-    console.log('  ✅ sendVideo() agora recebe instanceName');
-    console.log('  ✅ URLs corretas: /message/sendText/{instance}');
-    console.log('  ✅ Fallback funcionando corretamente');
+    console.log('🔧 TODAS AS CORREÇÕES APLICADAS + CORREÇÃO CRÍTICA:');
+    console.log('  ✅ 1. Códigos ID removidos das mensagens');
+    console.log('  ✅ 2. Sistema de ACK removido (não mais timeout)');  
+    console.log('  ✅ 3. Logs detalhados do webhook Evolution');
+    console.log('  ✅ 4. Logs de erro melhorados (JSON stringify)');
+    console.log('  ✅ 5. Endpoint de vídeo corrigido (/sendMedia)');
+    console.log('  ✅ 6. Limpeza: funções e variáveis ACK removidas');
+    console.log('  ✅ 7. CRÍTICA: Lógica waitForReply corrigida');
+    console.log('  ✅ 8. CRÍTICA: Logs detalhados em advanceConversation');
+    console.log('  ✅ 9. CRÍTICA: Funis padrão com waitForReply correto');
+    console.log('');
+    console.log('🎯 RESULTADO ESPERADO:');
+    console.log('  • Mensagens limpas (sem códigos visíveis)');
+    console.log('  • Funil continua automaticamente');
+    console.log('  • Fallback entre instâncias funcionando');
+    console.log('  • Respostas dos clientes detectadas');
     console.log('');
     console.log('📡 API Endpoints:');
     console.log('  GET  /api/dashboard     - Estatísticas');
