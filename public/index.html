@@ -541,11 +541,11 @@
                                 </div>
                             </div>
                             
-                            <div class="block-item" onclick="addBlock('wait_reply')">
-                                <div class="block-icon">⏸️</div>
+                            <div class="block-item" onclick="addBlock('audio')">
+                                <div class="block-icon">🎵</div>
                                 <div>
-                                    <div style="font-weight: 600;">Aguardar Resposta</div>
-                                    <div style="font-size: 12px; color: #6b7280;">Pausar até cliente responder</div>
+                                    <div style="font-weight: 600;">Áudio</div>
+                                    <div style="font-size: 12px; color: #6b7280;">Enviar arquivo de áudio</div>
                                 </div>
                             </div>
                         </div>
@@ -698,7 +698,7 @@
                 'video+text': '🎬',
                 'delay': '⏰',
                 'typing': '💬',
-                'wait_reply': '⏸️'
+                'audio': '🎵'
             };
             return icons[type] || 'T';
         }
@@ -712,7 +712,7 @@
                 'video+text': 'Vídeo + Texto',
                 'delay': 'Delay',
                 'typing': 'Digitando',
-                'wait_reply': 'Aguardar Resposta'
+                'audio': 'Áudio'
             };
             return names[type] || 'Mensagem';
         }
@@ -760,16 +760,15 @@
                                     <span style="color: #667eea;">⏰ Aguardar ${step.delaySeconds || 0} segundos</span>
                                 ` : step.type === 'typing' ? `
                                     <span style="color: #667eea;">💬 Mostrar "digitando" por ${step.typingSeconds || 3} segundos</span>
-                                ` : step.type === 'wait_reply' ? `
-                                    <span style="color: #dc2626;">⏸️ Pausar funil até cliente responder</span>
-                                    ${step.timeoutMinutes ? `<br><span style="color: #f59e0b;">⏰ Timeout: ${step.timeoutMinutes} min</span>` : ''}
-                                    ${step.nextOnReply !== undefined ? `<br><span style="color: #059669;">✅ Se responder: Passo ${step.nextOnReply + 1}</span>` : ''}
-                                    ${step.nextOnTimeout !== undefined ? `<br><span style="color: #dc2626;">⏰ Se timeout: Passo ${step.nextOnTimeout + 1}</span>` : ''}
+                                ` : step.type === 'audio' ? `
+                                    <strong>Áudio:</strong> ${step.mediaUrl || 'URL não configurada'}
+                                    ${step.waitForReply ? '<br><span style="color: #dc2626;">⏸️ Aguardar resposta do cliente</span>' : ''}
                                 ` : `
                                     ${step.delayBefore ? `<span style="color: #f59e0b;">⏰ Delay: ${step.delayBefore}s</span><br>` : ''}
                                     ${step.showTyping ? '<span style="color: #667eea;">💬 Mostrar "digitando"</span><br>' : ''}
                                     ${step.text ? `<strong>Texto:</strong> ${step.text.substring(0, 100)}${step.text.length > 100 ? '...' : ''}` : ''}
                                     ${step.mediaUrl ? `<br><strong>Mídia:</strong> ${step.mediaUrl}` : ''}
+                                    ${step.waitForReply ? '<br><span style="color: #dc2626;">⏸️ Aguardar resposta do cliente</span>' : ''}
                                 `}
                             </div>
                             
@@ -798,39 +797,6 @@
                                     </div>
                                     <small style="color: #6b7280;">Mostrar "está digitando..." para o cliente</small>
                                 </div>
-                                ` : step.type === 'wait_reply' ? `
-                                <div class="form-group">
-                                    <label class="form-label">Configurações do Gatilho</label>
-                                    <p style="color: #6b7280; font-size: 14px; margin-bottom: 16px;">
-                                        Este bloco pausa o funil até o cliente responder. Configure o que acontece quando ele responde ou não responde.
-                                    </p>
-                                </div>
-                                
-                                <div class="form-group">
-                                    <label class="form-label">Timeout (minutos)</label>
-                                    <input type="number" class="form-input" 
-                                        placeholder="60"
-                                        value="${step.timeoutMinutes || ''}"
-                                        oninput="updateStep(${index}, 'timeoutMinutes', this.value)">
-                                    <small style="color: #6b7280;">Tempo limite para aguardar resposta (deixe vazio para aguardar indefinidamente)</small>
-                                </div>
-                                
-                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                                    <div class="form-group">
-                                        <label class="form-label">Se cliente responder (ir para passo)</label>
-                                        <input type="number" class="form-input" 
-                                            placeholder="Próximo"
-                                            value="${step.nextOnReply !== undefined ? step.nextOnReply + 1 : ''}"
-                                            oninput="updateStep(${index}, 'nextOnReply', this.value ? this.value - 1 : '')">
-                                    </div>
-                                    <div class="form-group">
-                                        <label class="form-label">Se timeout (ir para passo)</label>
-                                        <input type="number" class="form-input" 
-                                            placeholder="Próximo"
-                                            value="${step.nextOnTimeout !== undefined ? step.nextOnTimeout + 1 : ''}"
-                                            oninput="updateStep(${index}, 'nextOnTimeout', this.value ? this.value - 1 : '')">
-                                    </div>
-                                </div>
                                 ` : `
                                 <div class="form-group">
                                     <label class="form-label">Texto da Mensagem</label>
@@ -843,7 +809,7 @@
                                 <div class="form-group">
                                     <label class="form-label">URL da Mídia</label>
                                     <input type="url" class="form-input" 
-                                        placeholder="https://exemplo.com/arquivo.jpg"
+                                        placeholder="https://exemplo.com/arquivo.${step.type === 'audio' ? 'mp3' : step.type === 'video' || step.type === 'video+text' ? 'mp4' : 'jpg'}"
                                         value="${step.mediaUrl || ''}"
                                         oninput="updateStep(${index}, 'mediaUrl', this.value)">
                                 </div>
@@ -866,6 +832,27 @@
                                         onchange="updateStep(${index}, 'showTyping', this.checked)">
                                     <label for="typing_${index}">Mostrar "digitando" antes de enviar</label>
                                 </div>
+
+                                ${(step.type === 'text' || step.type === 'image' || step.type === 'video' || step.type === 'audio' || step.type === 'image+text' || step.type === 'video+text') ? `
+                                <div class="form-checkbox">
+                                    <input type="checkbox" id="wait_${index}" 
+                                        ${step.waitForReply ? 'checked' : ''}
+                                        onchange="updateStep(${index}, 'waitForReply', this.checked)">
+                                    <label for="wait_${index}">⏸️ Aguardar resposta do cliente para continuar</label>
+                                </div>
+
+                                ${step.waitForReply ? `
+                                <div style="margin-left: 24px; margin-top: 12px; padding: 12px; background: #fef3c7; border-radius: 6px;">
+                                    <div class="form-group">
+                                        <label class="form-label">Timeout em minutos (vazio = aguardar indefinidamente)</label>
+                                        <input type="number" class="form-input" 
+                                            placeholder="60"
+                                            value="${step.timeoutMinutes || ''}"
+                                            oninput="updateStep(${index}, 'timeoutMinutes', this.value)">
+                                    </div>
+                                </div>
+                                ` : ''}
+                                ` : ''}
                                 `}
                             </div>
                         </div>
@@ -886,7 +873,6 @@
             container.innerHTML = html;
         }
 
-        // ✅ FUNÇÃO SAVEFUNNEL CORRIGIDA - SÓ AQUI ESTÁ A CORREÇÃO
         async function saveFunnel() {
             if (!currentFunnelData) {
                 alert('Selecione um funil para salvar');
@@ -898,7 +884,7 @@
                 return;
             }
             
-            // ✅ VALIDAÇÃO CORRIGIDA - A única mudança necessária
+            // Validação corrigida - Verificar campos obrigatórios por tipo de passo
             for (let i = 0; i < currentFunnelData.steps.length; i++) {
                 const step = currentFunnelData.steps[i];
                 
@@ -917,11 +903,8 @@
                         alert(`Passo ${i + 1}: Tempo de digitação é obrigatório`);
                         return;
                     }
-                } else if (step.type === 'wait_reply') {
-                    // ✅ CORREÇÃO: Aguardar resposta NÃO precisa de URL
-                    console.log(`Passo ${i + 1}: Aguardar resposta - OK`);
-                } else if (step.type === 'image' || step.type === 'video' || step.type === 'image+text' || step.type === 'video+text') {
-                    // ✅ CORREÇÃO: Só exigir URL para tipos com mídia
+                } else if (step.type === 'image' || step.type === 'video' || step.type === 'audio' || step.type === 'image+text' || step.type === 'video+text') {
+                    // Só exigir URL para tipos com mídia
                     if (!step.mediaUrl || step.mediaUrl.trim() === '') {
                         alert(`Passo ${i + 1}: URL da mídia é obrigatória`);
                         return;
