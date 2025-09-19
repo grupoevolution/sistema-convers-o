@@ -421,6 +421,43 @@
         .badge-info { background: #dbeafe; color: #1e40af; }
         .badge-danger { background: #fecaca; color: #991b1b; }
 
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.6);
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: white;
+            margin: 50px auto;
+            padding: 24px;
+            border-radius: 16px;
+            width: 90%;
+            max-width: 500px;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .close {
+            font-size: 24px;
+            cursor: pointer;
+            color: #6b7280;
+            background: none;
+            border: none;
+        }
+
         @media (max-width: 768px) {
             .funnel-editor {
                 flex-direction: column;
@@ -654,14 +691,10 @@
                 type: type,
                 text: '',
                 mediaUrl: '',
-                delayBefore: '',
-                showTyping: false,
-                delaySeconds: '',
-                typingSeconds: '',
                 waitForReply: false,
-                timeoutMinutes: '',
-                nextOnReply: '',
-                nextOnTimeout: ''
+                timeoutMinutes: undefined,
+                nextOnReply: undefined,
+                nextOnTimeout: undefined
             };
             
             currentFunnelData.steps.push(newStep);
@@ -675,23 +708,20 @@
         }
 
         function editStep(index) {
-            editingStepIndex = editingStepIndex === index ? -1 : index;
+            editingStepIndex = index;
             renderSteps();
         }
 
         function updateStep(index, field, value) {
             if (!currentFunnelData.steps[index]) return;
             
-            if (field === 'waitForReply' || field === 'showTyping') {
+            if (field === 'waitForReply') {
                 currentFunnelData.steps[index][field] = value;
             } else if (field === 'timeoutMinutes' || field === 'nextOnReply' || field === 'nextOnTimeout') {
-                currentFunnelData.steps[index][field] = value !== '' ? parseInt(value) : '';
+                currentFunnelData.steps[index][field] = value !== '' ? parseInt(value) : undefined;
             } else {
                 currentFunnelData.steps[index][field] = value;
             }
-            
-            // Debug log
-            console.log('Atualizando passo', index, field, value, currentFunnelData.steps[index]);
             
             renderSteps();
         }
@@ -755,7 +785,7 @@
                             </div>
                             <div class="step-actions">
                                 <button class="btn btn-small" onclick="editStep(${index})">
-                                    ${isEditing ? 'Fechar' : 'Editar'}
+                                    ${isEditing ? 'Salvar' : 'Editar'}
                                 </button>
                                 <button class="btn btn-small btn-danger" onclick="removeStep(${index})">Remover</button>
                             </div>
@@ -770,8 +800,8 @@
                                 ` : step.type === 'wait_reply' ? `
                                     <span style="color: #dc2626;">⏸️ Pausar funil até cliente responder</span>
                                     ${step.timeoutMinutes ? `<br><span style="color: #f59e0b;">⏰ Timeout: ${step.timeoutMinutes} min</span>` : ''}
-                                    ${step.nextOnReply !== '' ? `<br><span style="color: #059669;">✅ Se responder: Passo ${parseInt(step.nextOnReply) + 1}</span>` : ''}
-                                    ${step.nextOnTimeout !== '' ? `<br><span style="color: #dc2626;">⏰ Se timeout: Passo ${parseInt(step.nextOnTimeout) + 1}</span>` : ''}
+                                    ${step.nextOnReply !== undefined ? `<br><span style="color: #059669;">✅ Se responder: Passo ${step.nextOnReply + 1}</span>` : ''}
+                                    ${step.nextOnTimeout !== undefined ? `<br><span style="color: #dc2626;">⏰ Se timeout: Passo ${step.nextOnTimeout + 1}</span>` : ''}
                                 ` : `
                                     ${step.delayBefore ? `<span style="color: #f59e0b;">⏰ Delay: ${step.delayBefore}s</span><br>` : ''}
                                     ${step.showTyping ? '<span style="color: #667eea;">💬 Mostrar "digitando"</span><br>' : ''}
@@ -827,14 +857,14 @@
                                         <label class="form-label">Se cliente responder (ir para passo)</label>
                                         <input type="number" class="form-input" 
                                             placeholder="Próximo"
-                                            value="${step.nextOnReply !== '' ? parseInt(step.nextOnReply) + 1 : ''}"
+                                            value="${step.nextOnReply !== undefined ? step.nextOnReply + 1 : ''}"
                                             oninput="updateStep(${index}, 'nextOnReply', this.value ? this.value - 1 : '')">
                                     </div>
                                     <div class="form-group">
                                         <label class="form-label">Se timeout (ir para passo)</label>
                                         <input type="number" class="form-input" 
                                             placeholder="Próximo"
-                                            value="${step.nextOnTimeout !== '' ? parseInt(step.nextOnTimeout) + 1 : ''}"
+                                            value="${step.nextOnTimeout !== undefined ? step.nextOnTimeout + 1 : ''}"
                                             oninput="updateStep(${index}, 'nextOnTimeout', this.value ? this.value - 1 : '')">
                                     </div>
                                 </div>
@@ -873,41 +903,6 @@
                                         onchange="updateStep(${index}, 'showTyping', this.checked)">
                                     <label for="typing_${index}">Mostrar "digitando" antes de enviar</label>
                                 </div>
-                                
-                                <div class="form-checkbox">
-                                    <input type="checkbox" id="waitReply_${index}" 
-                                        ${step.waitForReply ? 'checked' : ''}
-                                        onchange="updateStep(${index}, 'waitForReply', this.checked)">
-                                    <label for="waitReply_${index}">Aguardar resposta do cliente</label>
-                                </div>
-                                
-                                ${step.waitForReply ? `
-                                <div class="form-group">
-                                    <label class="form-label">Timeout (minutos)</label>
-                                    <input type="number" class="form-input" 
-                                        placeholder="60"
-                                        value="${step.timeoutMinutes || ''}"
-                                        oninput="updateStep(${index}, 'timeoutMinutes', this.value)">
-                                    <small style="color: #6b7280;">Tempo limite para aguardar resposta</small>
-                                </div>
-                                
-                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                                    <div class="form-group">
-                                        <label class="form-label">Se responder (ir para passo)</label>
-                                        <input type="number" class="form-input" 
-                                            placeholder="Próximo"
-                                            value="${step.nextOnReply !== '' ? parseInt(step.nextOnReply) + 1 : ''}"
-                                            oninput="updateStep(${index}, 'nextOnReply', this.value ? this.value - 1 : '')">
-                                    </div>
-                                    <div class="form-group">
-                                        <label class="form-label">Se timeout (ir para passo)</label>
-                                        <input type="number" class="form-input" 
-                                            placeholder="Próximo"
-                                            value="${step.nextOnTimeout !== '' ? parseInt(step.nextOnTimeout) + 1 : ''}"
-                                            oninput="updateStep(${index}, 'nextOnTimeout', this.value ? this.value - 1 : '')">
-                                    </div>
-                                </div>
-                                ` : ''}
                                 `}
                             </div>
                         </div>
@@ -939,50 +934,18 @@
                 return;
             }
             
-            // ✅ VALIDAÇÃO CORRIGIDA - Verificar campos obrigatórios por tipo de passo
+            // Validar passos
             for (let i = 0; i < currentFunnelData.steps.length; i++) {
                 const step = currentFunnelData.steps[i];
-                
-                console.log(`Validando passo ${i + 1}:`, step); // Debug
-                
-                // Validações específicas por tipo
-                if (step.type === 'text') {
-                    if (!step.text || step.text.trim() === '') {
-                        alert(`Passo ${i + 1}: Texto é obrigatório para mensagens de texto`);
-                        return;
-                    }
-                } else if (step.type === 'delay') {
-                    if (!step.delaySeconds || step.delaySeconds <= 0) {
-                        alert(`Passo ${i + 1}: Tempo de delay é obrigatório e deve ser maior que 0`);
-                        return;
-                    }
-                } else if (step.type === 'typing') {
-                    if (!step.typingSeconds || step.typingSeconds <= 0) {
-                        alert(`Passo ${i + 1}: Tempo de digitação é obrigatório e deve ser maior que 0`);
-                        return;
-                    }
-                } else if (step.type === 'wait_reply') {
-                    // ✅ CORREÇÃO: Passo de aguardar resposta NÃO precisa de validação especial
-                    console.log(`Passo ${i + 1}: Aguardar resposta - validação passou`);
-                } else if (step.type === 'image' || step.type === 'video' || step.type === 'image+text' || step.type === 'video+text') {
-                    // ✅ CORREÇÃO: Só validar mídia para passos que realmente precisam
-                    if (!step.mediaUrl || step.mediaUrl.trim() === '') {
-                        alert(`Passo ${i + 1}: URL da mídia é obrigatória para este tipo de passo (${step.type})`);
-                        return;
-                    }
-                    // Validar se é uma URL válida
-                    try {
-                        new URL(step.mediaUrl);
-                    } catch (e) {
-                        alert(`Passo ${i + 1}: URL da mídia inválida`);
-                        return;
-                    }
-                } else {
-                    console.log(`Passo ${i + 1}: Tipo desconhecido (${step.type}) - sem validação específica`);
+                if (!step.text && step.type === 'text') {
+                    alert(`Passo ${i + 1}: Texto é obrigatório`);
+                    return;
+                }
+                if (!step.mediaUrl && step.type !== 'text') {
+                    alert(`Passo ${i + 1}: URL da mídia é obrigatória para este tipo`);
+                    return;
                 }
             }
-            
-            console.log('Todas as validações passaram, enviando funil...'); // Debug
             
             try {
                 const response = await fetch('/api/funnels', {
